@@ -4,7 +4,8 @@ import { env } from './config/env.js';
 import { createShareId } from './lib/shareId.js';
 import { Diagram, User } from './models/index.js';
 
-const DEMO = { name: 'Demo User', email: 'demo@flowcraft.app', password: 'demo12345' };
+// Sign in through Clerk with this (verified) email to claim the demo diagrams. Set SEED_EMAIL to use your own.
+const DEMO = { name: 'Demo User', email: (process.env.SEED_EMAIL ?? 'demo@flowcraft.app').toLowerCase() };
 
 const SAMPLES = [
   {
@@ -72,7 +73,7 @@ async function seed() {
   await shared.save();
 
   console.log('✓ Seeded demo data');
-  console.log(`  Login with ${DEMO.email} / ${DEMO.password}`);
+  console.log(`  Sign in with the Clerk account for ${DEMO.email} to see them`);
   console.log(`  Public link: /s/${shared.shareId}`);
 }
 

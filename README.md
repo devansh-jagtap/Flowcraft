@@ -37,7 +37,7 @@ It is built for everyday people, not just developers: students making study maps
 - ⌨️ Editor with **Tab / Shift+Tab indentation** for tree diagrams, and built-in syntax help
 
 **Saving & sharing**
-- 🔐 Sign up / log in (JWT)
+- 🔐 Sign up / log in with [Clerk](https://clerk.com) (email, social logins, account management)
 - 💾 **Autosave** (debounced, only changed fields are sent) with save status and unsaved-changes warning
 - 🗂️ **Dashboard** with live SVG previews, search, filters by type, sorting, ★ starring, duplicate & delete, and stats
 - 🔗 **Public read-only share links** with view counter; viewers can **"Make a copy"** into their own account
@@ -53,7 +53,7 @@ It is built for everyday people, not just developers: students making study maps
 | Layer | Technology |
 | --- | --- |
 | Database | **MongoDB** with **Mongoose** (schemas, indexes, `Map` fields, aggregation pipeline for stats) |
-| Backend | **Node.js** + **Express 5** REST API in **TypeScript**, **zod** validation, **JWT** + **bcrypt** auth, helmet, CORS, rate limiting |
+| Backend | **Node.js** + **Express 5** REST API in **TypeScript**, **zod** validation, **Clerk** session-token auth, helmet, CORS, rate limiting |
 | AI | **Google Gemini** (`gemini-2.5-flash`) via REST in JSON mode with a response schema |
 | Frontend | **React 19** + **TypeScript** + **Vite**, React Router 7, **React Flow** (canvas), **dagre** (auto-layout), html-to-image (export) |
 | Testing | **Vitest** + **Supertest** + **mongodb-memory-server** (API), Vitest unit tests (parser & layout) |
@@ -70,8 +70,8 @@ flowcraft/
 │   │   ├── config/             # env + database connection
 │   │   ├── models/             # Mongoose models: User, Diagram
 │   │   ├── validators/         # zod schemas for every request
-│   │   ├── middleware/         # auth (JWT), central error handler
-│   │   ├── controllers/        # route handlers (auth, diagrams, shared)
+│   │   ├── middleware/         # auth (verifies Clerk tokens), central error handler
+│   │   ├── controllers/        # route handlers (me, diagrams, shared)
 │   │   ├── routes/             # Express routers
 │   │   ├── lib/                # HttpError, validation helper, share-id generator
 │   │   ├── app.ts              # Express app (also serves the React build in production)
@@ -85,7 +85,7 @@ flowcraft/
 │       ├── components/         # Workspace (editor UI), modals, navbar, shared UI
 │       ├── pages/              # Landing, Auth, Dashboard, Editor, Playground, Shared
 │       ├── api/                # typed fetch client
-│       ├── context/            # auth + toast providers
+│       ├── context/            # auth hook (Clerk) + toast provider
 │       └── hooks/              # useAsync, useDebouncedValue
 ├── Dockerfile                  # production image (API + built client in one container)
 └── docker-compose.yml          # MongoDB (and optionally the full app)
@@ -114,27 +114,31 @@ docker compose up -d mongo
 ```
 (or use your own MongoDB / Atlas connection string)
 
-### 3. Configure the API
+### 3. Configure Clerk and the API
+Create an application at [dashboard.clerk.com](https://dashboard.clerk.com) and copy its keys from **API keys**.
 ```bash
-cp server/.env.example server/.env
+cp client/.env.example client/.env   # VITE_CLERK_PUBLISHABLE_KEY
+cp server/.env.example server/.env   # CLERK_SECRET_KEY, MONGODB_URI, ...
 ```
 | Variable | Description | Default |
 | --- | --- | --- |
 | `PORT` | API port | `5000` |
 | `MONGODB_URI` | MongoDB connection string | `mongodb://127.0.0.1:27017/flowcraft` |
-| `JWT_SECRET` | Secret used to sign login tokens (**required in production**) | dev-only fallback |
-| `JWT_EXPIRES_IN` | Token lifetime | `7d` |
-| `CLIENT_ORIGIN` | Allowed browser origin(s), comma-separated | `http://localhost:5173` |
+| `CLERK_SECRET_KEY` | Clerk secret key — verifies session tokens and reads profiles (**required**) | – |
+| `CLERK_JWT_KEY` | Optional Clerk PEM public key to verify tokens without a network call | – |
+| `CLIENT_ORIGIN` | Allowed browser origin(s), comma-separated. Clerk tokens are only accepted from these origins. | `http://localhost:5173` |
 | `GEMINI_API_KEY` | Google Gemini key for AI generation — free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Without it the app still works, just without AI. | – |
 | `GEMINI_MODEL` | Gemini model to use | `gemini-2.5-flash` |
 
-> 🔐 Never commit `server/.env` (it is git-ignored) and never put the key in client code — the browser only talks to your own API.
+> 🔐 Never commit `server/.env` (it is git-ignored) and never put the secret or Gemini keys in client code. The client only needs the Clerk *publishable* key (`client/.env`).
 
 ### 4. (Optional) add demo data
 ```bash
 npm run seed
 ```
-Creates the account **demo@flowcraft.app / demo12345** with three example diagrams (one of them publicly shared).
+Creates three example diagrams (one of them publicly shared) for **demo@flowcraft.app**. Run `SEED_EMAIL=you@example.com npm run seed` instead and they show up when you sign in with Clerk using that (verified) email.
+
+Signing in with Clerk creates a local user record on the first API request. Accounts that existed before Clerk are claimed by whoever signs in with the same verified email, so their diagrams carry over.
 
 ---
 
@@ -157,14 +161,14 @@ npm run lint
 
 ### Production
 ```bash
-npm run build        # compiles the API and bundles the React app
-NODE_ENV=production JWT_SECRET=your-secret MONGODB_URI=... npm start
+VITE_CLERK_PUBLISHABLE_KEY=pk_... npm run build
+NODE_ENV=production CLERK_SECRET_KEY=sk_... CLIENT_ORIGIN=https://your.domain MONGODB_URI=... npm start
 ```
 In production Express serves the built React app, so the whole product is a single deployable service on port 5000.
 
 ### Docker
 ```bash
-JWT_SECRET=your-secret docker compose --profile full up --build
+VITE_CLERK_PUBLISHABLE_KEY=pk_... CLERK_SECRET_KEY=sk_... docker compose --profile full up --build
 ```
 Then open **http://localhost:5000**.
 
@@ -176,9 +180,7 @@ All responses are JSON. Errors look like `{ "error": { "message": "...", "detail
 
 | Method | Endpoint | Auth | Description |
 | --- | --- | --- | --- |
-| `POST` | `/api/auth/register` | – | Create an account → `{ user, token }` |
-| `POST` | `/api/auth/login` | – | Log in → `{ user, token }` |
-| `GET` | `/api/auth/me` | ✔ | Current user |
+| `GET` | `/api/auth/me` | ✔ | Current user (created from the Clerk profile on first sign-in) |
 | `GET` | `/api/diagrams?q=&type=&sort=` | ✔ | List my diagrams (search, filter, sort; starred first) |
 | `GET` | `/api/diagrams/stats` | ✔ | Counts by type, shared count, total views (aggregation) |
 | `POST` | `/api/diagrams` | ✔ | Create a diagram |
@@ -193,7 +195,9 @@ All responses are JSON. Errors look like `{ "error": { "message": "...", "detail
 | `POST` | `/api/ai/generate` | – | `{ prompt, current? }` → `{ diagram: { title, type, direction, source } }`. Pass `current: { type, source }` to edit an existing diagram. Rate-limited per IP. |
 | `GET` | `/api/health` | – | Health check |
 
-Security notes: passwords are hashed with bcrypt and never returned; other users' diagrams return **404** (not 403) so ids can't be probed; search input is regex-escaped; auth routes are rate-limited; request bodies are size-limited and validated with zod.
+✔ = send the Clerk session token as `Authorization: Bearer <token>` (the client does this with Clerk's `getToken()`). Sign-up and sign-in happen in Clerk, not this API.
+
+Security notes: passwords never touch this app (Clerk owns them); session tokens are verified against Clerk's keys and the allowed origins; other users' diagrams return **404** (not 403) so ids can't be probed; search input is regex-escaped; AI generation is rate-limited; request bodies are size-limited and validated with zod.
 
 ---
 

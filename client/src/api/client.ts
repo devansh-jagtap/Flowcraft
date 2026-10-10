@@ -1,11 +1,15 @@
-const BASE_URL = `${import.meta.env.VITE_API_URL ?? ''}/api`;
-const TOKEN_KEY = 'flowcraft.token';
+import { getToken } from '@clerk/react';
 
-export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
-};
+const BASE_URL = `${import.meta.env.VITE_API_URL ?? ''}/api`;
+
+/** The current Clerk session token, or null for guests (or if Clerk couldn't load). */
+async function sessionToken(): Promise<string | null> {
+  try {
+    return await getToken();
+  } catch {
+    return null;
+  }
+}
 
 interface ErrorDetail {
   field: string;
@@ -43,7 +47,7 @@ async function request<T>(path: string, { method = 'GET', body, query, signal }:
   }
 
   const headers: Record<string, string> = {};
-  const token = tokenStore.get();
+  const token = await sessionToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 

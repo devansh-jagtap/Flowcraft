@@ -8,6 +8,9 @@ COPY client/package.json client/
 RUN npm ci
 
 COPY . .
+# Vite inlines this into the client bundle, so it must be known at build time.
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 RUN npm run build
 
 # ---- Runtime stage: only production dependencies + compiled output ----

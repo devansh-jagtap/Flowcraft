@@ -31,8 +31,8 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<LandingPage />} />
-        <Route path="login" element={<AuthPage mode="login" />} />
-        <Route path="register" element={<AuthPage mode="register" />} />
+        <Route path="login/*" element={<AuthPage mode="login" />} />
+        <Route path="register/*" element={<AuthPage mode="register" />} />
         <Route element={<ProtectedRoute />}>
           <Route path="app" element={<DashboardPage />} />
         </Route>
