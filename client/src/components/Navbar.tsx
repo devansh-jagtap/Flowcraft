@@ -20,7 +20,7 @@ export default function Navbar() {
         <Logo />
         <nav className="navbar-links">
           <NavLink to="/try" className="nav-link hide-sm">
-            Playground
+            ✨ Create
           </NavLink>
           {user ? (
             <>
