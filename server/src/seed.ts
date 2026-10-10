@@ -13,7 +13,7 @@ const SAMPLES = [
     direction: 'TB',
     theme: 'sunset',
     starred: true,
-    source: `[Wake up] -> Check phone -> Is it a weekday?
+    source: `(Wake up) -> Check phone -> Is it a weekday?
 Is it a weekday? -> Shower & get ready: yes
 Is it a weekday? -> Sleep in: no
 Sleep in -> Brunch with friends -> (Relax)
