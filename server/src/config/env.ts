@@ -17,5 +17,11 @@ export const env = {
   mongoUri: process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/flowcraft',
   jwtSecret: jwtSecret(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY ?? '',
+    model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
+    // Overridable so tests and local demos can point at a fake server.
+    baseUrl: process.env.GEMINI_BASE_URL ?? 'https://generativelanguage.googleapis.com/v1beta',
+  },
   clientOrigins: (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173').split(',').map((o) => o.trim()),
 } as const;
