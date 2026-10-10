@@ -6,15 +6,7 @@ Flowcraft turns a sentence like *"How does online food delivery work?"* into a c
 
 It is made for everyday people: students mapping a subject, small teams writing down a process, families sketching a family tree. Prompts work in any language Gemini supports.
 
-![Landing page](docs/screenshots/landing.png)
-
-| AI chat and a generated flowchart | Generated mind map |
-| --- | --- |
-| ![AI editor](docs/screenshots/ai-editor.png) | ![Mind map editor](docs/screenshots/mind-map.png) |
-
-| Dashboard | Mobile |
-| --- | --- |
-| ![Dashboard](docs/screenshots/dashboard.png) | <img src="docs/screenshots/mobile.png" width="260" alt="Mobile editor" /> |
+The interface follows macOS: the system font on Apple devices, system blue, hairline separators, a Finder-style library and Light, Dark or Auto appearance.
 
 <br />
 
@@ -27,8 +19,8 @@ git clone https://github.com/devansh-jagtap/silver-octo-guacamole.git flowcraft
 cd flowcraft
 npm install                          # installs server and client (npm workspaces)
 docker compose up -d mongo           # or point MONGODB_URI at your own database
-cp client/.env.example client/.env   # Clerk publishable key
-cp server/.env.example server/.env   # Clerk secret key, MongoDB, Gemini
+echo "VITE_CLERK_PUBLISHABLE_KEY=pk_..." > client/.env   # your Clerk publishable key
+cp server/.env.example server/.env   # Clerk secret key, MongoDB, AI key
 npm run dev
 ```
 
@@ -91,6 +83,13 @@ Lines starting with `#` are comments.
 - A playground that works without an account. The draft is imported after signing up.
 - Twelve starter templates, including an ER diagram and UML class, use case, sequence and state diagrams.
 
+**Interface**
+- A landing page with a live demo running inside a MacBook drawn in CSS, and a preview of every diagram type.
+- Light, Dark and Auto appearance from the navbar. The choice is remembered in the browser and applied before the page draws, so it never flashes.
+- A library window with a Finder-style sidebar, loading placeholders and a confirmation sheet before deleting.
+- Works on phones: the navbar collapses to icons and the editor stacks the text above the canvas.
+- Keyboard friendly: visible focus rings, a skip-to-content link, and menus that work with arrow keys and Escape. Motion is turned off for people who prefer reduced motion.
+
 <br />
 
 ## How it fits together
@@ -101,7 +100,7 @@ flowcraft/
 │   └── src/
 │       ├── pages/         one file per route: Landing, Dashboard, Editor, Playground, Shared, Auth
 │       ├── components/
-│       │   ├── layout/    navbar, Clerk router bridge, protected routes
+│       │   ├── layout/    navbar, appearance menu, Clerk router bridge, protected routes
 │       │   ├── landing/   the CSS MacBook that hosts the live demo
 │       │   ├── library/   "My diagrams": sidebar, diagram cards, new-diagram dialog
 │       │   ├── editor/    Workspace (toolbar + sidebar + canvas), text editor, themes, sharing
@@ -109,6 +108,7 @@ flowcraft/
 │       │   ├── diagram/   React Flow canvas, node shapes, static thumbnails, PNG/SVG export
 │       │   └── ui.tsx     small shared pieces: spinner, empty/error states, dialogs, segmented control
 │       ├── lib/diagram/   text parser, layout, themes, templates (with unit tests)
+│       ├── lib/           light/dark appearance, guest drafts, example prompts, date formatting
 │       ├── api/           typed fetch client for the REST API
 │       ├── context/       auth (Clerk) and toasts
 │       ├── hooks/         useAsync, useDebouncedValue, useAiEnabled
@@ -129,7 +129,9 @@ flowcraft/
 
 **How a diagram is drawn.** The text is parsed into nodes and edges (`client/src/lib/diagram/parse*.ts`). Dagre computes positions (`layout.ts`), any positions the user dragged are applied on top, and React Flow renders the custom shapes. Node ids come from the text (for example `trip/stay/hotel`), so a dragged node stays attached to the right box while you keep typing.
 
-**Tech stack.** MongoDB with Mongoose, Express 5, zod, Clerk, Google Gemini (`gemini-2.5-flash`), React 19, React Router 7, React Flow, dagre, html-to-image, Vitest, Supertest and mongodb-memory-server, npm workspaces, ESLint, Docker and GitHub Actions.
+**Tech stack.** MongoDB with Mongoose, Express 5, zod, Clerk, Google Gemini (`gemini-2.5-flash`, directly or through Vercel AI Gateway), React 19, React Router 7, React Flow, dagre, html-to-image, plain CSS with design tokens, Geist (self-hosted) and Phosphor icons, Vitest, Supertest and mongodb-memory-server, npm workspaces, ESLint, Docker and GitHub Actions.
+
+**Styles.** `client/src/styles/tokens.css` holds every colour, radius, shadow and font. Dark mode swaps those tokens when `<html data-theme="dark">` is set (see `src/lib/theme.ts`). Each other stylesheet covers one area: controls, feedback, prompt, diagram, landing, MacBook, library and editor.
 
 <br />
 
