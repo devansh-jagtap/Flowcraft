@@ -2,8 +2,6 @@
 
 Describe something in plain words and get a diagram back.
 
-<br />
-
 ## What Flowcraft is for
 
 Most people never draw the diagram they need, because diagram tools make you drag boxes and arrows one at a time. Flowcraft lets you **write** instead. Type a sentence like *"How does online food delivery work?"* or *"ER diagram for a college database"* and it draws a clean, laid-out diagram in a few seconds. You can then refine it by chatting (*"add a step for refunds"*), edit the text yourself, drag boxes around, change colours, share a read-only link or download a PNG or SVG.
@@ -12,19 +10,6 @@ It is made for:
 - **Students** mapping a subject, drawing ER and UML diagrams for DBMS and software engineering courses, or turning notes into a mind map.
 - **Developers and small teams** writing down a process, a data model, a class design or the messages between services.
 - **Everyone else**: a family tree, a trip plan, a morning routine. Prompts work in any language the AI model supports.
-
-### Diagram types
-
-| Type | Use it for | Notation |
-| --- | --- | --- |
-| Flowchart | processes, algorithms, decisions, user journeys (also UML activity diagrams) | steps, decision diamonds, start/end pills, labelled arrows |
-| Mind map | brainstorming, study notes, plans | a centre topic with branches |
-| Org chart | teams, reporting lines, family trees | cards with a name and a role |
-| ER diagram | database design and data models | Chen notation: entities, weak entities, key / partial key / multivalued / derived / composite attributes, relationship diamonds, identifying relationships, cardinality, total participation |
-| UML class | object-oriented design | classes with attributes and methods, interfaces, abstract classes, enums, inheritance, realisation, composition, aggregation, association, dependency, multiplicities |
-| UML use case | who can do what in a system | system boundary, actors, use cases, «include», «extend», generalisation |
-| UML sequence | messages between parts of a system over time | lifelines (actor, participant, database), calls, replies, async messages, `alt` / `loop` / `opt` / `par` fragments |
-| UML state | the states something moves through | initial and final states, transitions with events, choice points, self-transitions |
 
 ### Features
 
@@ -70,7 +55,7 @@ It is made for:
 ### 1. Install
 
 ```bash
-git clone https://github.com/devansh-jagtap/silver-octo-guacamole.git flowcraft
+git clone https://github.com/devansh-jagtap/Flowcraft.git flowcraft
 cd flowcraft
 npm install
 ```
