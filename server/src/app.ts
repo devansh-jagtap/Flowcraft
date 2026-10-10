@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from './config/env.js';
 import { errorHandler, notFound } from './middleware/error.js';
+import { aiRoutes } from './routes/ai.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { diagramRoutes } from './routes/diagrams.routes.js';
 import { sharedRoutes } from './routes/shared.routes.js';
@@ -27,6 +28,7 @@ export function createApp() {
     res.json({ status: 'ok', database: mongoose.connection.readyState === 1 ? 'up' : 'down' });
   });
   app.use('/api/auth', authRoutes);
+  app.use('/api/ai', aiRoutes);
   app.use('/api/diagrams', diagramRoutes);
   app.use('/api/shared', sharedRoutes);
   app.use('/api', notFound);

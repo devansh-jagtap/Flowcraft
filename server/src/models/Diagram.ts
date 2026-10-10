@@ -7,6 +7,11 @@ export interface Point {
   y: number;
 }
 
+export interface PromptEntry {
+  text: string;
+  createdAt: Date;
+}
+
 export interface IDiagram {
   owner: Types.ObjectId;
   title: string;
@@ -17,6 +22,8 @@ export interface IDiagram {
   direction: Direction;
   /** Node positions the user dragged manually, keyed by node id. Auto-layout fills the rest. */
   positions: Map<string, Point>;
+  /** The AI prompts that built this diagram, oldest first (shown as a chat history). */
+  prompts: PromptEntry[];
   starred: boolean;
   isPublic: boolean;
   shareId?: string;
@@ -30,6 +37,11 @@ export type DiagramDocument = HydratedDocument<IDiagram>;
 
 const pointSchema = new Schema<Point>({ x: Number, y: Number }, { _id: false });
 
+const promptSchema = new Schema<PromptEntry>(
+  { text: { type: String, required: true, maxlength: 600 }, createdAt: { type: Date, default: Date.now } },
+  { _id: false }
+);
+
 const diagramSchema = new Schema<IDiagram>(
   {
     owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -39,6 +51,7 @@ const diagramSchema = new Schema<IDiagram>(
     theme: { type: String, enum: DIAGRAM_THEMES, default: 'ocean' },
     direction: { type: String, enum: DIRECTIONS, default: 'TB' },
     positions: { type: Map, of: pointSchema, default: () => new Map() },
+    prompts: { type: [promptSchema], default: [] },
     starred: { type: Boolean, default: false },
     isPublic: { type: Boolean, default: false },
     // Sparse so that the many private diagrams without a share id don't collide.

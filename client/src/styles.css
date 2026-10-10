@@ -927,6 +927,7 @@ textarea:focus {
   background: var(--surface);
   min-height: 0;
   display: flex;
+  flex-direction: column;
 }
 
 .workspace-canvas,
@@ -1231,6 +1232,279 @@ textarea:focus {
   padding-top: 56px;
   padding-bottom: 32px;
   text-align: center;
+}
+
+/* ---------- AI prompt box ---------- */
+.prompt-box {
+  display: grid;
+  gap: 12px;
+}
+
+.prompt-hero {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.prompt-form {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.prompt-hero .prompt-form {
+  padding: 14px;
+  border-radius: 22px;
+  box-shadow: 0 0 0 6px var(--primary-soft), var(--shadow-lg);
+}
+
+.prompt-form:focus-within {
+  border-color: var(--primary);
+}
+
+.prompt-form.is-busy {
+  border-color: transparent;
+  background: linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(90deg, var(--primary), var(--accent), var(--primary)) border-box;
+  background-size: 100% 100%, 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: 0 0, -200% 0;
+  }
+}
+
+.prompt-form textarea {
+  flex: 1;
+  border: 0;
+  resize: none;
+  background: transparent;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 6px 8px;
+  min-height: 44px;
+}
+
+.prompt-hero .prompt-form textarea {
+  font-size: 17px;
+}
+
+.prompt-form textarea:focus {
+  box-shadow: none;
+}
+
+.prompt-submit {
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+
+.prompt-status {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+}
+
+.prompt-examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip-soft {
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.chip-soft:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.ai-notice {
+  font-size: 13.5px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, #f59f00 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, #f59f00 35%, transparent);
+}
+
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+}
+
+.hero-alt {
+  margin-top: 14px;
+}
+
+/* ---------- Editor side panel (AI chat + text) ---------- */
+.side-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.side-tabs button {
+  border: 0;
+  background: none;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.side-tabs button.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.ai-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.ai-history {
+  flex: 1;
+  min-height: 60px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-empty {
+  margin: auto 0;
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  padding: 20px 10px;
+}
+
+.ai-message {
+  align-self: flex-end;
+  max-width: 92%;
+  background: var(--primary-soft);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 14px 14px 4px 14px;
+  font-size: 14px;
+  display: grid;
+  gap: 2px;
+}
+
+.ai-message time {
+  font-size: 11px;
+  justify-self: end;
+}
+
+.ai-thinking {
+  padding: 12px 16px;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: bounce 1s infinite ease-in-out;
+}
+
+.dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes bounce {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+.undo-btn {
+  align-self: flex-start;
+}
+
+.prompt-form.compact {
+  border-radius: 14px;
+  box-shadow: none;
+  padding: 8px;
+}
+
+.prompt-form.compact textarea {
+  font-size: 14px;
+  min-height: 40px;
+}
+
+/* ---------- Landing steps ---------- */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 28px;
+  padding-top: 56px;
+  padding-bottom: 56px;
+}
+
+.step-number {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+}
+
+.templates-section {
+  padding-top: 56px;
+}
+
+.section-label.first {
+  margin-top: 0;
+}
+
+.spacer {
+  height: 14px;
 }
 
 /* ---------- Responsive ---------- */

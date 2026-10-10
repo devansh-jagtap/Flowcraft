@@ -3,7 +3,7 @@ import { HttpError } from '../lib/HttpError.js';
 import { currentUser } from '../middleware/auth.js';
 import { Diagram } from '../models/index.js';
 
-const PUBLIC_FIELDS = 'title type source theme direction positions views updatedAt owner shareId';
+const PUBLIC_FIELDS = 'title type source theme direction positions prompts views updatedAt owner shareId';
 
 export async function view(req: Request, res: Response) {
   const diagram = await Diagram.findOneAndUpdate(
@@ -33,6 +33,7 @@ export async function fork(req: Request, res: Response) {
     theme: original.theme,
     direction: original.direction,
     positions: original.positions,
+    prompts: original.prompts,
     forkedFrom: original._id,
   });
   res.status(201).json({ diagram: copy });

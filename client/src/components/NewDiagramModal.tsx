@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { BLANK_SOURCE, TEMPLATES, TYPE_INFO, type Template } from '../lib/diagram/templates';
 import type { DiagramType } from '../lib/diagram/types';
+import { draftFromGenerated } from '../lib/draft';
 import { DiagramThumbnail } from './diagram/DiagramThumbnail';
+import PromptBox from './PromptBox';
 import { Modal } from './ui';
 
 export interface NewDiagramChoice {
@@ -10,6 +12,7 @@ export interface NewDiagramChoice {
   source: string;
   theme: Template['theme'];
   direction: Template['direction'];
+  prompts?: { text: string; createdAt: string }[];
 }
 
 interface Props {
@@ -36,6 +39,10 @@ export default function NewDiagramModal({ onClose, onCreate }: Props) {
 
   return (
     <Modal title="New diagram" onClose={onClose} wide>
+      <h3 className="section-label first">✨ Describe it and let AI draw it</h3>
+      <PromptBox size="compact" autoFocus onGenerated={(diagram, prompt) => choose(draftFromGenerated(diagram, prompt))} />
+
+      <h3 className="section-label">…or pick a type and start from a template</h3>
       <div className="type-picker">
         {TYPES.map((t) => (
           <button key={t} className={`type-option${t === type ? ' active' : ''}`} onClick={() => setType(t)}>
@@ -46,7 +53,7 @@ export default function NewDiagramModal({ onClose, onCreate }: Props) {
         ))}
       </div>
 
-      <h3 className="section-label">Start from</h3>
+      <div className="spacer" />
       <div className="template-grid">
         <button
           className="template-card blank"
