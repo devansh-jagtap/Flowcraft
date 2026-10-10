@@ -7,6 +7,7 @@ export default function ProtectedRoute() {
   const location = useLocation();
 
   if (!ready) return <Spinner fullPage />;
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  // Clerk sends the user back to redirect_url once they've signed in.
+  if (!user) return <Navigate to={`/login?redirect_url=${encodeURIComponent(location.pathname)}`} replace />;
   return <Outlet />;
 }

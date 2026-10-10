@@ -1,25 +1,22 @@
-import bcrypt from 'bcryptjs';
-import { Schema, model, type HydratedDocument, type Model } from 'mongoose';
+import { Schema, model, type HydratedDocument } from 'mongoose';
 
+/** Local record of a Clerk account. Clerk owns sign-in; we keep what diagrams need to reference. */
 export interface IUser {
+  clerkId?: string;
   name: string;
-  email: string;
-  password: string;
+  email?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-interface UserMethods {
-  comparePassword(candidate: string): Promise<boolean>;
-}
+export type UserDocument = HydratedDocument<IUser>;
 
-export type UserDocument = HydratedDocument<IUser, UserMethods>;
-
-const userSchema = new Schema<IUser, Model<IUser, object, UserMethods>, UserMethods>(
+const userSchema = new Schema<IUser>(
   {
+    // Missing only on seeded/legacy users that haven't been claimed by a Clerk sign-in yet.
+    clerkId: { type: String, unique: true, sparse: true },
     name: { type: String, required: true, trim: true, maxlength: 60 },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true, select: false },
+    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
   },
   {
     timestamps: true,
@@ -34,12 +31,4 @@ const userSchema = new Schema<IUser, Model<IUser, object, UserMethods>, UserMeth
   }
 );
 
-userSchema.pre('save', async function hashPassword() {
-  if (this.isModified('password')) this.password = await bcrypt.hash(this.password, 10);
-});
-
-userSchema.method('comparePassword', function comparePassword(this: IUser, candidate: string) {
-  return bcrypt.compare(candidate, this.password);
-});
-
-export const User = model<IUser, Model<IUser, object, UserMethods>>('User', userSchema);
+export const User = model<IUser>('User', userSchema);
