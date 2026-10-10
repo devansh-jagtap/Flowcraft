@@ -10,7 +10,7 @@ import { useAsync } from '../hooks/useAsync';
 type SaveState = 'saved' | 'pending' | 'saving' | 'error';
 
 const AUTOSAVE_DELAY = 800;
-const FIELDS = ['title', 'type', 'source', 'theme', 'direction', 'positions'] as const;
+const FIELDS = ['title', 'type', 'source', 'theme', 'direction', 'positions', 'prompts'] as const;
 
 const toDraft = (d: Diagram): DiagramDraft => ({
   title: d.title,
@@ -19,6 +19,7 @@ const toDraft = (d: Diagram): DiagramDraft => ({
   theme: d.theme,
   direction: d.direction,
   positions: d.positions ?? {},
+  prompts: d.prompts ?? [],
 });
 
 /** Only send fields that actually changed since the last successful save. */

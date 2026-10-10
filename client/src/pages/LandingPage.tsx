@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { diagramsApi } from '../api/diagrams';
+import type { GeneratedDiagram } from '../api/types';
 import DiagramCanvas from '../components/diagram/DiagramCanvas';
 import { DiagramThumbnail } from '../components/diagram/DiagramThumbnail';
+import PromptBox from '../components/PromptBox';
 import { Segmented } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
+import { draftFromGenerated, guestDraft } from '../lib/draft';
 import { parseDiagram } from '../lib/diagram/parse';
 import { TEMPLATES, TYPE_INFO } from '../lib/diagram/templates';
 import type { DiagramType } from '../lib/diagram/types';
@@ -29,49 +33,66 @@ Ingredients in fridge? -> Order food: no`,
     Kiara — Baby`,
 };
 
-const FEATURES = [
-  ['✍️', 'Just type', 'No dragging boxes around. Write steps or bullet points and the layout happens for you.'],
-  ['🎨', 'Looks great by default', 'Five colour themes, smart spacing and clean arrows. Drag anything you want to fine-tune.'],
-  ['🔗', 'Share with one link', 'Send a read-only link to friends, classmates or your team. They can copy it to remix.'],
-  ['⬇️', 'Export anywhere', 'Download crisp PNG or SVG images for slides, docs, assignments or WhatsApp.'],
+const STEPS = [
+  ['💬', 'Describe it', 'Write what you want in plain words — a process, an idea, a team. Any language.'],
+  ['✨', 'AI draws it', 'Flowcraft picks the right diagram type and lays it out neatly in seconds.'],
+  ['🛠️', 'Refine it', 'Ask for changes like “add a refund step”, drag boxes, change colours, or edit the text.'],
+  ['🔗', 'Share it', 'Download PNG/SVG or send a link anyone can open.'],
 ];
 
 export default function LandingPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [type, setType] = useState<DiagramType>('flowchart');
   const [source, setSource] = useState(DEMOS.flowchart);
   const graph = useMemo(() => parseDiagram(type, source), [type, source]);
 
+  async function openGenerated(diagram: GeneratedDiagram, prompt: string) {
+    const draft = draftFromGenerated(diagram, prompt);
+    if (user) {
+      const saved = await diagramsApi.create(draft);
+      navigate(`/d/${saved._id}`);
+    } else {
+      // Guests continue in the playground; the draft is imported if they sign up.
+      guestDraft.save(draft);
+      navigate('/try');
+    }
+  }
+
   return (
     <div className="landing">
       <section className="hero container">
-        <span className="eyebrow">✨ Text → diagram, instantly</span>
+        <span className="eyebrow">✨ AI diagram generator</span>
         <h1>
-          Type it. <span className="gradient-text">See it.</span> Share it.
+          Describe it. <span className="gradient-text">Get a diagram.</span>
         </h1>
         <p className="lead">
-          Flowcraft turns plain sentences into clean flowcharts, mind maps and org charts. Perfect for study notes, project
-          plans, processes and family trees — no design skills needed.
+          Type what you want to explain — a process, a plan, a team — and Flowcraft's AI draws a clean flowchart, mind map or
+          org chart you can edit, share and download.
         </p>
-        <div className="hero-cta">
-          <Link to="/try" className="btn btn-primary btn-lg">
-            Start drawing — it's free
-          </Link>
-          {user ? (
-            <Link to="/app" className="btn btn-secondary btn-lg">
-              My diagrams
-            </Link>
-          ) : (
-            <Link to="/register" className="btn btn-secondary btn-lg">
-              Create an account
-            </Link>
-          )}
-        </div>
+        <PromptBox onGenerated={openGenerated} autoFocus />
+        <p className="muted small hero-alt">
+          No account needed · <Link to="/try?template=morning-routine">or start from a template</Link>
+        </p>
+      </section>
+
+      <section className="container steps">
+        {STEPS.map(([icon, title, text], i) => (
+          <div key={title} className="step">
+            <div className="feature-icon">{icon}</div>
+            <span className="step-number">Step {i + 1}</span>
+            <h3>{title}</h3>
+            <p className="muted">{text}</p>
+          </div>
+        ))}
       </section>
 
       <section className="container demo card">
         <div className="demo-head">
-          <strong>Try it right here — edit the text 👇</strong>
+          <div>
+            <strong>Prefer typing it yourself?</strong>
+            <p className="muted small">Every diagram is backed by simple text — edit it and watch the diagram update live.</p>
+          </div>
           <Segmented
             label="Diagram type"
             value={type}
@@ -90,18 +111,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="container features">
-        {FEATURES.map(([icon, title, text]) => (
-          <div key={title} className="feature">
-            <div className="feature-icon">{icon}</div>
-            <h3>{title}</h3>
-            <p className="muted">{text}</p>
-          </div>
-        ))}
-      </section>
-
-      <section className="container">
-        <h2 className="section-title">Start from a template</h2>
+      <section className="container templates-section">
+        <h2 className="section-title">Or start from a template</h2>
         <div className="template-grid">
           {TEMPLATES.map((t) => (
             <Link key={t.id} to={`/try?template=${t.id}`} className="template-card">
@@ -115,7 +126,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="container footer muted small">Flowcraft · built with MongoDB, Express, React &amp; Node.js</footer>
+      <footer className="container footer muted small">Flowcraft · built with MongoDB, Express, React, Node.js &amp; Google Gemini</footer>
     </div>
   );
 }

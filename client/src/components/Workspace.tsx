@@ -1,8 +1,10 @@
-import { useDeferredValue, useMemo, type ReactNode } from 'react';
-import type { DiagramDraft } from '../api/types';
+import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
+import type { DiagramDraft, GeneratedDiagram } from '../api/types';
+import { useAiEnabled } from '../hooks/useAiEnabled';
 import { parseDiagram } from '../lib/diagram/parse';
 import { TYPE_INFO } from '../lib/diagram/templates';
 import type { DiagramType, Direction } from '../lib/diagram/types';
+import AiPanel from './AiPanel';
 import DiagramCanvas from './diagram/DiagramCanvas';
 import SourceEditor from './SourceEditor';
 import ThemePicker from './ThemePicker';
@@ -30,8 +32,38 @@ const DIRECTION_OPTIONS: { value: Direction; label: string; title: string }[] = 
   { value: 'LR', label: '→', title: 'Left to right' },
 ];
 
+const MAX_UNDO = 10;
+const MAX_PROMPTS = 50;
+
 /** The editor UI shared by saved diagrams and the guest playground. */
 export default function Workspace({ draft, onChange, status, actions }: Props) {
+  const aiEnabled = useAiEnabled();
+  const [tab, setTab] = useState<'ai' | 'text'>();
+  const activeTab = tab ?? (aiEnabled === false ? 'text' : 'ai');
+  // Snapshots taken before each AI change, so a bad suggestion is one click to revert.
+  const [undoStack, setUndoStack] = useState<DiagramDraft[]>([]);
+
+  function applyAi(result: GeneratedDiagram, prompt: string) {
+    setUndoStack((stack) => [...stack.slice(-(MAX_UNDO - 1)), draft]);
+    onChange({
+      // Keep a title the user chose; the first prompt gets the AI's suggested title.
+      title: draft.prompts.length === 0 ? result.title : draft.title,
+      type: result.type,
+      direction: result.direction,
+      source: result.source,
+      // Positions belong to the old structure; let auto-layout place the new one.
+      positions: {},
+      prompts: [...draft.prompts, { text: prompt, createdAt: new Date().toISOString() }].slice(-MAX_PROMPTS),
+    });
+  }
+
+  function undo() {
+    const previous = undoStack.at(-1);
+    if (!previous) return;
+    setUndoStack((stack) => stack.slice(0, -1));
+    onChange(previous);
+  }
+
   // Deferring the text keeps typing responsive while layout catches up on big diagrams.
   const source = useDeferredValue(draft.source);
   const graph = useMemo(() => parseDiagram(draft.type, source), [draft.type, source]);
@@ -73,7 +105,19 @@ export default function Workspace({ draft, onChange, status, actions }: Props) {
 
       <div className="workspace-body">
         <aside className="workspace-source">
-          <SourceEditor type={draft.type} value={draft.source} onChange={(value) => onChange({ source: value })} issues={graph.issues} />
+          <div className="side-tabs" role="tablist">
+            <button role="tab" aria-selected={activeTab === 'ai'} className={activeTab === 'ai' ? 'active' : ''} onClick={() => setTab('ai')}>
+              ✨ Ask AI
+            </button>
+            <button role="tab" aria-selected={activeTab === 'text'} className={activeTab === 'text' ? 'active' : ''} onClick={() => setTab('text')}>
+              ✍️ Edit text
+            </button>
+          </div>
+          {activeTab === 'ai' ? (
+            <AiPanel draft={draft} onApply={applyAi} onUndo={undoStack.length ? undo : undefined} />
+          ) : (
+            <SourceEditor type={draft.type} value={draft.source} onChange={(value) => onChange({ source: value })} issues={graph.issues} />
+          )}
         </aside>
         <section className="workspace-canvas">
           <DiagramCanvas
