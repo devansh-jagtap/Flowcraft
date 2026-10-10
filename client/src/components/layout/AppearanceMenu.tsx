@@ -1,10 +1,11 @@
+import { CaretDown, Check, CircleHalf, Moon, Sun, type Icon } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useThemePreference, type ThemePreference } from '../../lib/theme';
 
-const OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'Auto' },
+const OPTIONS: { value: ThemePreference; label: string; icon: Icon }[] = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'Auto', icon: CircleHalf },
 ];
 
 /** A macOS-style menu for choosing Light, Dark or Auto appearance. */
@@ -52,13 +53,15 @@ export default function AppearanceMenu() {
     <div className="appearance" ref={rootRef}>
       <button
         ref={buttonRef}
-        className="nav-link"
+        className="nav-btn"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Appearance: ${current.label}`}
         onClick={() => setOpen((o) => !o)}
       >
-        {current.label}
+        <current.icon aria-hidden />
+        <span className="nav-label">{current.label}</span>
+        <CaretDown className="nav-caret" size={11} weight="bold" aria-hidden />
       </button>
       {open && (
         <div className="appearance-menu" role="menu" aria-label="Appearance" onKeyDown={onMenuKeyDown}>
@@ -73,6 +76,8 @@ export default function AppearanceMenu() {
                 close();
               }}
             >
+              <span className="menu-check">{o.value === preference && <Check size={13} weight="bold" aria-hidden />}</span>
+              <o.icon aria-hidden />
               {o.label}
             </button>
           ))}

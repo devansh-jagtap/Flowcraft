@@ -171,7 +171,6 @@ export default function LandingPage() {
       <footer className="footer">
         <div className="container footer-inner">
           <span className="logo">Flowcraft</span>
-          <p>Built with MongoDB, Express, React, Node.js and Google Gemini.</p>
           <a href="https://github.com/devansh-jagtap/silver-octo-guacamole">Source on GitHub</a>
         </div>
       </footer>

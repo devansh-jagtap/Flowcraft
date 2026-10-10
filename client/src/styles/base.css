@@ -187,35 +187,76 @@ code {
 .navbar-links {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
-.nav-link {
-  height: 28px;
+/* Navbar buttons look like macOS toolbar buttons: a raised surface with a hairline edge. */
+.nav-btn {
   display: inline-flex;
   align-items: center;
-  padding: 0 10px;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
   border-radius: var(--radius-sm);
-  color: var(--muted);
+  background: var(--surface);
+  box-shadow: var(--control-shadow);
+  color: var(--text);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
-}
-
-button.nav-link {
-  border: 0;
-  background: none;
   cursor: pointer;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s var(--ease);
 }
 
-.nav-link:hover,
-.nav-link.active {
-  color: var(--text);
+.nav-btn svg {
+  flex: none;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+
+.nav-btn:hover {
   text-decoration: none;
+  background: color-mix(in srgb, var(--surface) 90%, var(--text));
 }
 
-.nav-link.active {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+.nav-btn:hover svg {
+  color: var(--text);
+}
+
+.nav-btn:active {
+  transform: scale(0.96);
+}
+
+/* The page you're on. */
+.nav-btn.active,
+.nav-btn[aria-expanded='true'] {
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--primary) 35%, transparent);
+  color: var(--primary);
+}
+
+.nav-btn.active svg,
+.nav-btn[aria-expanded='true'] svg {
+  color: var(--primary);
+}
+
+.nav-btn-primary,
+.nav-btn-primary:hover {
+  background: var(--primary);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(0, 60, 130, 0.25);
+  color: #fdfdfd;
+}
+
+.nav-btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.nav-caret {
+  margin-left: -2px;
 }
 
 /* ---------- Appearance menu (macOS-style pull-down) ---------- */
@@ -253,10 +294,12 @@ button.nav-link {
 }
 
 .appearance-menu button {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  height: 26px;
-  padding: 0 10px 0 28px;
+  height: 28px;
+  padding: 0 10px 0 6px;
   border: 0;
   border-radius: 6px;
   background: none;
@@ -273,17 +316,11 @@ button.nav-link {
   color: #fdfdfd;
 }
 
-/* The chosen appearance gets a checkmark, drawn as a rotated corner. */
-.appearance-menu button[aria-checked='true']::before {
-  content: '';
-  position: absolute;
-  top: 7px;
-  left: 12px;
-  width: 4px;
-  height: 9px;
-  border: solid currentColor;
-  border-width: 0 1.6px 1.6px 0;
-  transform: rotate(45deg);
+/* Reserves room for the checkmark so labels line up, as in a macOS menu. */
+.menu-check {
+  display: grid;
+  place-items: center;
+  width: 14px;
 }
 
 .auth-page {
@@ -302,8 +339,22 @@ button.nav-link {
     display: none;
   }
 
-  .nav-link {
-    padding: 0 8px;
+  .navbar-links {
+    gap: 6px;
+  }
+
+  /* Secondary navbar buttons become icon-only; the label stays for screen readers. */
+  .nav-btn {
+    padding: 0 9px;
+  }
+
+  .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }
 
