@@ -13,8 +13,9 @@ Choose the diagram type:
 - "orgchart" for hierarchies: teams, companies, family trees, reporting lines, classifications.
 If the user explicitly names a type, use it.
 
-FLOWCHART SYNTAX (one connection per line):
-- Arrows: A -> B -> C
+FLOWCHART SYNTAX:
+- Every step must be connected with arrows. Don't list steps on their own lines — write the connections.
+- Arrows: A -> B -> C (a chain on one line is fine and encouraged for straight sequences)
 - A step ending with "?" is a decision diamond. Label its outgoing arrows with ": yes" / ": no" (or other short answers) at the END of the line, e.g. "Payment ok? -> Ship order: yes"
 - Wrap the first and last steps in parentheses to make start/end pills: "(Customer opens app)", "(Order delivered)"
 - Reuse the EXACT same text to refer to the same step again (that is how branches join).
@@ -60,7 +61,7 @@ export const RESPONSE_SCHEMA = {
     title: { type: 'STRING' },
     type: { type: 'STRING', enum: [...DIAGRAM_TYPES] },
     direction: { type: 'STRING', enum: ['TB', 'LR'] },
-    source: { type: 'STRING', description: 'The diagram in Flowcraft text syntax, lines separated by \\n' },
+    source: { type: 'STRING', description: 'The diagram in Flowcraft text syntax, one line per connection or outline item' },
   },
   required: ['title', 'type', 'direction', 'source'],
   propertyOrdering: ['title', 'type', 'direction', 'source'],

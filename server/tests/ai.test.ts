@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkSource } from '../src/ai/checkSource.js';
-import { generateDiagram } from '../src/ai/diagramGenerator.js';
+import { generateDiagram, normalise } from '../src/ai/diagramGenerator.js';
 import { env } from '../src/config/env.js';
 import { api } from './helpers.js';
 
@@ -21,6 +21,10 @@ const geminiReply = (payload: unknown) =>
 describe('checkSource', () => {
   it('accepts valid flowcharts and trees', () => {
     expect(checkSource('flowchart', FLOW.source)).toEqual([]);
+    // A lone "(Start)" line only sets the shape; the step is connected on the next line.
+    expect(checkSource('flowchart', '(Customer opens app)\nCustomer opens app -> Browse\nBrowse -> (Done)')).toEqual([]);
+    // Loops back to earlier steps, labelled edges and shape wrappers are fine.
+    expect(checkSource('flowchart', '(Start) -> Valid?\nValid? -> (End): yes\nValid? -> Fix it: no\nFix it -> Valid?')).toEqual([]);
     expect(checkSource('mindmap', 'Root\n  A\n    B\n  C')).toEqual([]);
   });
 
@@ -28,8 +32,28 @@ describe('checkSource', () => {
     expect(checkSource('flowchart', 'Just one line')).toEqual(['The diagram needs at least 2 lines.']);
     expect(checkSource('flowchart', 'Step one\nStep two')[0]).toMatch(/arrows/);
     expect(checkSource('flowchart', 'A ->\nB -> C')[0]).toMatch(/nothing on one side/);
+    // Seen with real Gemini output: steps listed on their own lines float unconnected.
+    expect(checkSource('flowchart', '(Start) -> Register\nFill form\nRegister -> (End)')).toEqual([
+      'Line 2 "Fill form" has no arrow, so it is not connected. Every line must be "A -> B".',
+    ]);
+    // Also seen: a typo in a repeated step name splits the flow in two.
+    expect(checkSource('flowchart', '(Start) -> Choose UPI\nChose UPI -> Enter PIN\nEnter PIN -> (Done)')[0]).toMatch(
+      /can't be reached.*"Chose UPI", "Enter PIN", "\(Done\)"/
+    );
     expect(checkSource('mindmap', 'Root\nOther root\n  Child')[0]).toMatch(/exactly one root/);
     expect(checkSource('orgchart', '  Indented root\n    Child')[0]).toMatch(/must not be indented/);
+  });
+});
+
+describe('normalise', () => {
+  it('turns escaped "\\n" sequences from the model into real line breaks', () => {
+    // Seen with real Gemini output: the whole diagram arrived on one line.
+    expect(normalise('(Start)\\nStart -> Cook\\nCook -> (Eat)')).toBe('(Start)\nStart -> Cook\nCook -> (Eat)');
+  });
+
+  it('fixes line endings and tabs but leaves normal text alone', () => {
+    expect(normalise('Root\r\n\tChild\n')).toBe('Root\n  Child');
+    expect(normalise('A -> B\nB -> C')).toBe('A -> B\nB -> C');
   });
 });
 
