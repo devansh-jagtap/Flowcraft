@@ -1,4 +1,4 @@
-import type { DiagramDraft } from '../api/types';
+import type { DiagramDraft, GeneratedDiagram } from '../api/types';
 
 const KEY = 'flowcraft.guestDraft';
 
@@ -7,7 +7,8 @@ export const guestDraft = {
   load(): DiagramDraft | null {
     try {
       const raw = localStorage.getItem(KEY);
-      return raw ? (JSON.parse(raw) as DiagramDraft) : null;
+      // Drafts saved by older versions may lack newer fields.
+      return raw ? { positions: {}, prompts: [], ...(JSON.parse(raw) as Partial<DiagramDraft>) } as DiagramDraft : null;
     } catch {
       return null;
     }
@@ -37,3 +38,15 @@ export const pendingImport = {
     return draft;
   },
 };
+
+const THEME_FOR_TYPE = { flowchart: 'ocean', mindmap: 'grape', orgchart: 'forest' } as const;
+
+/** Builds a new draft from an AI result, remembering the prompt that created it. */
+export function draftFromGenerated(diagram: GeneratedDiagram, prompt: string): DiagramDraft {
+  return {
+    ...diagram,
+    theme: THEME_FOR_TYPE[diagram.type],
+    positions: {},
+    prompts: [{ text: prompt, createdAt: new Date().toISOString() }],
+  };
+}
