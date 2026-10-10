@@ -46,11 +46,23 @@ export default function MacBook({ title, toolbar, children, onOpen }: Props) {
         setVisible(true);
         observer.disconnect();
       },
-      { threshold: 0.2 }
+      { threshold: 0.35 }
     );
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // transitionend can be skipped (an interrupted transition, a background tab), so also
+  // report "open" once the lid and window would have finished: 1.1s delay + 0.7s.
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(() => {
+      if (openedRef.current) return;
+      openedRef.current = true;
+      onOpenRef.current?.();
+    }, 1900);
+    return () => clearTimeout(timer);
+  }, [visible]);
 
   const handleTransitionEnd = (e: TransitionEvent) => {
     if (e.target === e.currentTarget && e.propertyName === 'opacity') notifyOpen();

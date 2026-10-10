@@ -1,7 +1,7 @@
 /*
  * Landing page, top to bottom:
- *   hero     big headline on the left, the prompt box on the right
- *   stage    the MacBook running a live demo, on a soft wallpaper glow
+ *   hero     centred headline with the prompt box below it, filling the first screen
+ *   stage    the MacBook running a live demo; its lid opens as it scrolls into view
  *   types    bento of the eight diagram types, each a real template preview
  *   how      sticky heading beside the four steps
  *   closing  one last call to action, then the footer
@@ -15,16 +15,18 @@
 /* ---------- Hero ---------- */
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  align-items: end;
-  gap: 64px;
-  padding-top: 88px;
-  padding-bottom: 56px;
+  align-content: center;
+  justify-items: center;
+  gap: 40px;
+  min-height: calc(100dvh - var(--nav-height));
+  padding-top: 64px;
+  padding-bottom: 96px;
+  text-align: center;
 }
 
 .hero-title {
   margin: 0;
-  font-size: clamp(52px, 6.8vw, 104px);
+  font-size: clamp(52px, 8vw, 120px);
   font-weight: 700;
   line-height: 0.95;
   letter-spacing: -0.05em;
@@ -32,13 +34,22 @@
 }
 
 .hero-side {
-  padding-bottom: 6px;
+  width: 100%;
+  max-width: 680px;
   animation: rise-in 0.9s var(--ease) 0.12s both;
+}
+
+.hero-side .prompt-box {
+  text-align: left;
+}
+
+.hero-side .prompt-examples {
+  justify-content: center;
 }
 
 .lead {
   max-width: 30em;
-  margin-bottom: 24px;
+  margin: 0 auto 24px;
   color: var(--muted);
   font-size: 18px;
   line-height: 1.45;
@@ -54,7 +65,7 @@
 
 /* ---------- Stage: the MacBook demo ---------- */
 .stage {
-  padding: 24px 0 136px;
+  padding: 96px 0 136px;
   /* A soft glow in the wallpaper's colours, so the laptop sits in light rather than on a flat page. */
   background:
     radial-gradient(48% 58% at 50% 52%, color-mix(in srgb, var(--primary) 13%, transparent), transparent 72%),
@@ -285,9 +296,7 @@
 /* ---------- Tablet ---------- */
 @media (max-width: 1024px) {
   .hero {
-    grid-template-columns: 1fr;
-    gap: 28px;
-    padding-top: 64px;
+    gap: 32px;
   }
 
   .stage-device {
@@ -319,8 +328,10 @@
 /* ---------- Phone ---------- */
 @media (max-width: 640px) {
   .hero {
-    padding-top: 40px;
-    padding-bottom: 40px;
+    gap: 28px;
+    min-height: 0;
+    padding-top: 56px;
+    padding-bottom: 64px;
   }
 
   .lead,
