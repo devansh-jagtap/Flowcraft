@@ -29,7 +29,7 @@ describe('parseFlowchart', () => {
   it('reuses nodes referenced by the same text across lines', () => {
     const graph = parseFlowchart('Hungry? -> Cook: yes\nHungry? -> Nap: no\nCook -> Eat');
     expect(graph.nodes).toHaveLength(4);
-    expect(graph.nodes[0]).toMatchObject({ id: 'hungry', shape: 'decision' });
+    expect(graph.nodes[0]).toMatchObject({ id: 'hungry-q', shape: 'decision' });
     expect(graph.edges.map((e) => e.label)).toEqual(['yes', 'no', undefined]);
   });
 
@@ -56,6 +56,10 @@ describe('parseFlowchart', () => {
       { line: 1, message: 'Arrow is missing a step on one side' },
       { line: 2, message: '"B" points to itself' },
     ]);
+  });
+
+  it('treats a question as a different node from the same statement', () => {
+    expect(parseFlowchart('Ship it -> Ship it?').nodes.map((n) => n.shape)).toEqual(['rect', 'decision']);
   });
 
   it('does not duplicate identical edges', () => {
