@@ -7,6 +7,11 @@ export interface User {
   createdAt: string;
 }
 
+export interface PromptEntry {
+  text: string;
+  createdAt: string;
+}
+
 export interface Diagram {
   _id: string;
   title: string;
@@ -15,6 +20,7 @@ export interface Diagram {
   theme: ThemeName;
   direction: Direction;
   positions?: Record<string, Point>;
+  prompts?: PromptEntry[];
   starred: boolean;
   isPublic: boolean;
   shareId?: string;
@@ -24,7 +30,7 @@ export interface Diagram {
 }
 
 export interface SharedDiagram
-  extends Pick<Diagram, 'title' | 'type' | 'source' | 'theme' | 'direction' | 'positions' | 'views' | 'updatedAt' | 'shareId'> {
+  extends Pick<Diagram, 'title' | 'type' | 'source' | 'theme' | 'direction' | 'positions' | 'prompts' | 'views' | 'updatedAt' | 'shareId'> {
   author: string;
 }
 
@@ -37,4 +43,8 @@ export interface DiagramStats {
 
 export type DiagramDraft = Pick<Diagram, 'title' | 'type' | 'source' | 'theme' | 'direction'> & {
   positions: Record<string, Point>;
+  prompts: PromptEntry[];
 };
+
+/** What the AI returns: a complete diagram in Flowcraft's text syntax. */
+export type GeneratedDiagram = Pick<Diagram, 'title' | 'type' | 'direction' | 'source'>;

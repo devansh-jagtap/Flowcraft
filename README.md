@@ -1,15 +1,14 @@
-# Flowcraft — type it, see it, share it
+# Flowcraft — describe it, get a diagram
 
-**Flowcraft turns plain text into clean flowcharts, mind maps and org charts.**
-Write a few lines like `Wake up -> Coffee -> Is it Monday?` or an indented list of ideas, and the diagram draws itself — with automatic layout, colour themes, drag-to-adjust, PNG/SVG export and shareable links.
+**Flowcraft is an AI diagram generator.** Describe what you want in plain words — *"How does online food delivery work?"*, *"Mind map for learning Python in 3 months"*, *"Org chart for a small restaurant"* — and Google Gemini draws a clean flowchart, mind map or org chart. Then refine it by chatting (*"add a step for refunds"*), drag boxes, change colours, share a link or download PNG/SVG.
 
-It is built for everyday people, not just developers: students making study maps, small teams documenting a process, families sketching a family tree.
+It is built for everyday people, not just developers: students making study maps, small teams documenting a process, families sketching a family tree. It works in any language Gemini supports (try a Hindi prompt).
 
-![Landing page with live demo](docs/screenshots/landing.png)
+![Landing page: describe your diagram](docs/screenshots/landing.png)
 
-| Mind map | Org chart |
+| AI chat + generated flowchart | Generated mind map |
 | --- | --- |
-| ![Mind map editor](docs/screenshots/mind-map.png) | ![Org chart editor](docs/screenshots/org-chart.png) |
+| ![AI editor](docs/screenshots/ai-editor.png) | ![Mind map editor](docs/screenshots/mind-map.png) |
 
 | Dashboard | Mobile |
 | --- | --- |
@@ -19,7 +18,14 @@ It is built for everyday people, not just developers: students making study maps
 
 ## Features
 
-**Diagram generation**
+**AI generation (Google Gemini)**
+- ✨ **Prompt → diagram:** the AI picks the best diagram type and writes it in Flowcraft's text syntax, which is then drawn with automatic layout
+- 💬 **Refine by chatting:** every follow-up message edits the current diagram (*"make it more detailed"*, *"turn this into a mind map"*, *"translate to Hindi"*)
+- ↶ **Undo** any AI change; the **prompt history is saved** with the diagram in MongoDB
+- 🛡️ **Self-correcting output:** answers are schema-validated and syntax-checked (connected steps, single root, reachable flow); problems are sent back to the model for one automatic retry
+- 🔑 The API key stays on the server; per-IP rate limiting protects your quota; clear messages when the key is missing, invalid or rate-limited
+
+**Diagrams & editing**
 - ✍️ **Text → diagram in real time** — three diagram types:
   - **Flowchart:** `A -> B -> C`, decisions are any step ending in `?` (drawn as ◇), `(Start)` makes a rounded start/end step, `Ready? -> Go: yes` labels an arrow
   - **Mind map:** an indented outline (pasted Markdown bullet lists work too)
@@ -48,6 +54,7 @@ It is built for everyday people, not just developers: students making study maps
 | --- | --- |
 | Database | **MongoDB** with **Mongoose** (schemas, indexes, `Map` fields, aggregation pipeline for stats) |
 | Backend | **Node.js** + **Express 5** REST API in **TypeScript**, **zod** validation, **JWT** + **bcrypt** auth, helmet, CORS, rate limiting |
+| AI | **Google Gemini** (`gemini-2.5-flash`) via REST in JSON mode with a response schema |
 | Frontend | **React 19** + **TypeScript** + **Vite**, React Router 7, **React Flow** (canvas), **dagre** (auto-layout), html-to-image (export) |
 | Testing | **Vitest** + **Supertest** + **mongodb-memory-server** (API), Vitest unit tests (parser & layout) |
 | Tooling | npm workspaces (monorepo), ESLint, Docker multi-stage build, docker-compose, GitHub Actions CI |
@@ -91,7 +98,7 @@ flowcraft/
 ## Getting started
 
 ### Prerequisites
-- **Node.js 20+** (22 recommended)
+- **Node.js 22.9 or newer** (check with `node -v`; the scripts use `--env-file-if-exists`, which older versions do not support)
 - **MongoDB** — either a local install, Docker, or a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
 
 ### 1. Clone and install
@@ -118,6 +125,10 @@ cp server/.env.example server/.env
 | `JWT_SECRET` | Secret used to sign login tokens (**required in production**) | dev-only fallback |
 | `JWT_EXPIRES_IN` | Token lifetime | `7d` |
 | `CLIENT_ORIGIN` | Allowed browser origin(s), comma-separated | `http://localhost:5173` |
+| `GEMINI_API_KEY` | Google Gemini key for AI generation — free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Without it the app still works, just without AI. | – |
+| `GEMINI_MODEL` | Gemini model to use | `gemini-2.5-flash` |
+
+> 🔐 Never commit `server/.env` (it is git-ignored) and never put the key in client code — the browser only talks to your own API.
 
 ### 4. (Optional) add demo data
 ```bash
@@ -172,12 +183,14 @@ All responses are JSON. Errors look like `{ "error": { "message": "...", "detail
 | `GET` | `/api/diagrams/stats` | ✔ | Counts by type, shared count, total views (aggregation) |
 | `POST` | `/api/diagrams` | ✔ | Create a diagram |
 | `GET` | `/api/diagrams/:id` | ✔ | Get one of my diagrams |
-| `PATCH` | `/api/diagrams/:id` | ✔ | Update title / text / type / theme / direction / positions / starred |
+| `PATCH` | `/api/diagrams/:id` | ✔ | Update title / text / type / theme / direction / positions / prompt history / starred |
 | `DELETE` | `/api/diagrams/:id` | ✔ | Delete |
 | `POST` | `/api/diagrams/:id/duplicate` | ✔ | Duplicate |
 | `POST` | `/api/diagrams/:id/share` | ✔ | `{ isPublic }` — turn the public link on/off (link id is kept) |
 | `GET` | `/api/shared/:shareId` | – | Public read-only view (increments views) |
 | `POST` | `/api/shared/:shareId/fork` | ✔ | Copy a public diagram into my account |
+| `GET` | `/api/ai/status` | – | `{ enabled }` — whether a Gemini key is configured |
+| `POST` | `/api/ai/generate` | – | `{ prompt, current? }` → `{ diagram: { title, type, direction, source } }`. Pass `current: { type, source }` to edit an existing diagram. Rate-limited per IP. |
 | `GET` | `/api/health` | – | Health check |
 
 Security notes: passwords are hashed with bcrypt and never returned; other users' diagrams return **404** (not 403) so ids can't be probed; search input is regex-escaped; auth routes are rate-limited; request bodies are size-limited and validated with zod.
@@ -185,6 +198,14 @@ Security notes: passwords are hashed with bcrypt and never returned; other users
 ---
 
 ## Engineering notes — problems found and fixed
+
+**AI output (found by testing with the real Gemini API, not just mocks)**
+- **Unconnected boxes.** Gemini sometimes listed steps on their own lines without arrows. The validator now rejects steps that aren't connected, and the system prompt asks for connections explicitly.
+- **Whole diagram on one line.** Some answers contained the two characters `\n` instead of real line breaks. Output is now normalised before validation.
+- **Typos that split a flow.** In a Hindi answer the model wrote the same step two slightly different ways, so the chain broke in two. The validator now checks that every step is reachable from the first one and tells the model exactly which steps aren't, so the automatic retry can fix it.
+- **Over-strict validation.** A lone `(Customer opens app)` line only sets the start shape and is connected on the next line — that is valid, so the rule was relaxed to "connected somewhere" instead of "every line has an arrow".
+
+**App**
 
 - **Infinite render loop on the canvas.** A default prop `positions = {}` created a new object every render, which re-ran the layout memo, reset React Flow's node store, and triggered "Maximum update depth exceeded". Fixed by using a module-level constant and keeping the parent's inline `onNodeMove` callback out of the memo's dependencies (via a ref).
 - **"Ship it" and "Ship it?" merged into one node.** Node ids were slugs of the label, and the slug dropped the `?`. Caught by a layout unit test; question nodes now get their own id.
