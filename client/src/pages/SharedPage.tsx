@@ -39,7 +39,7 @@ export default function SharedPage() {
     if (!diagram) return;
     if (!user) {
       // Guests get the diagram in the playground straight away.
-      guestDraft.save({ ...diagram, positions: diagram.positions ?? {} });
+      guestDraft.save({ ...diagram, positions: diagram.positions ?? {}, prompts: diagram.prompts ?? [] });
       navigate('/try');
       return;
     }
