@@ -91,7 +91,7 @@ flowcraft/
 ## Getting started
 
 ### Prerequisites
-- **Node.js 20+** (22 recommended)
+- **Node.js 22.9 or newer** (check with `node -v`; the scripts use `--env-file-if-exists`, which older versions do not support)
 - **MongoDB** — either a local install, Docker, or a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
 
 ### 1. Clone and install
