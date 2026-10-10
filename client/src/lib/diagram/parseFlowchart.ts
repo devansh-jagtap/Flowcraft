@@ -2,7 +2,7 @@ import { slug } from './slug';
 import type { Graph, GraphEdge, GraphNode, NodeShape, ParseIssue } from './types';
 
 const ARROW = /\s*(?:-->|->|→|=>)\s*/;
-// "A -> B: yes" — the edge label must follow ": " so times like "9:30" stay intact.
+// "A -> B: yes". The edge label must follow ": " so times like "9:30" stay intact.
 const EDGE_LABEL = /:\s+([^:]+)$/;
 const COMMENT = /^\s*(#|\/\/)/;
 

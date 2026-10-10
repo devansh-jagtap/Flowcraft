@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Outlet, Route, Routes } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import ProtectedRoute from './components/ProtectedRoute';
+import Navbar from './components/layout/Navbar';
+import ProtectedRoute from './components/layout/ProtectedRoute';
 import { Spinner } from './components/ui';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
@@ -33,17 +33,15 @@ export default function App() {
         <Route index element={<LandingPage />} />
         <Route path="login/*" element={<AuthPage mode="login" />} />
         <Route path="register/*" element={<AuthPage mode="register" />} />
-        <Route element={<ProtectedRoute />}>
-          <Route path="app" element={<DashboardPage />} />
-        </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
-      {/* Editor-style pages fill the viewport below the navbar. */}
+      {/* App-style pages fill the viewport below the navbar, like a macOS window. */}
       <Route element={<Layout fullHeight />}>
         <Route path="try" element={<PlaygroundPage />} />
         <Route path="s/:shareId" element={<SharedPage />} />
         <Route element={<ProtectedRoute />}>
+          <Route path="app" element={<DashboardPage />} />
           <Route path="d/:id" element={<EditorPage />} />
         </Route>
       </Route>

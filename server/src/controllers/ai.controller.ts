@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { generateDiagram } from '../ai/diagramGenerator.js';
-import { isAiConfigured } from '../ai/gemini.js';
+import { isAiConfigured } from '../ai/llm.js';
 import { parse } from '../lib/validate.js';
 import { generateSchema } from '../validators/ai.schemas.js';
 

@@ -13,6 +13,12 @@ export const env = {
     // Optional PEM public key for verifying tokens without a network call.
     jwtKey: process.env.CLERK_JWT_KEY,
   },
+  aiGateway: {
+    // Vercel AI Gateway (https://vercel.com/docs/ai-gateway). Preferred over GEMINI_API_KEY when set.
+    apiKey: process.env.AI_GATEWAY_API_KEY ?? '',
+    model: process.env.AI_GATEWAY_MODEL ?? 'google/gemini-2.5-flash',
+    baseUrl: process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1',
+  },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
     model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',

@@ -17,7 +17,7 @@ export const guestDraft = {
     try {
       localStorage.setItem(KEY, JSON.stringify(draft));
     } catch {
-      /* storage full or disabled — the draft simply isn't persisted */
+      /* storage full or disabled: the draft simply is not persisted */
     }
   },
   clear() {

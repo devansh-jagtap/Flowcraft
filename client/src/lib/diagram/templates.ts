@@ -100,13 +100,13 @@ Is it critical? -> Add to next sprint: no`,
     type: 'orgchart',
     theme: 'grape',
     direction: 'TB',
-    source: `Ananya — CEO
-  Rahul — CTO
-    Priya — Backend
-    Arjun — Frontend
-  Meera — Head of Design
-    Kabir — Product Designer
-  Sara — Head of Growth`,
+    source: `Ananya: CEO
+  Rahul: CTO
+    Priya: Backend
+    Arjun: Frontend
+  Meera: Head of Design
+    Kabir: Product Designer
+  Sara: Head of Growth`,
   },
   {
     id: 'family-tree',
@@ -115,23 +115,23 @@ Is it critical? -> Add to next sprint: no`,
     type: 'orgchart',
     theme: 'forest',
     direction: 'TB',
-    source: `Grandparents — Ramesh & Sunita
-  Vikram — Father
-    Devansh — Me
-    Isha — Sister
-  Kavita — Aunt
-    Rohan — Cousin`,
+    source: `Ramesh & Sunita: Grandparents
+  Vikram: Father
+    Devansh: Me
+    Isha: Sister
+  Kavita: Aunt
+    Rohan: Cousin`,
   },
 ];
 
 export const BLANK_SOURCE: Record<DiagramType, string> = {
   flowchart: '(Start) -> First step -> Looks good?\nLooks good? -> (Done): yes\nLooks good? -> First step: no',
   mindmap: 'Main idea\n  Topic one\n    Detail\n  Topic two',
-  orgchart: 'Team lead — Role\n  Member — Role\n  Member — Role',
+  orgchart: 'Team lead: Role\n  Member: Role\n  Member: Role',
 };
 
-export const TYPE_INFO: Record<DiagramType, { label: string; icon: string; hint: string }> = {
-  flowchart: { label: 'Flowchart', icon: '🔀', hint: 'Steps and decisions' },
-  mindmap: { label: 'Mind map', icon: '🧠', hint: 'Brainstorm ideas' },
-  orgchart: { label: 'Org chart', icon: '🏢', hint: 'Teams and family trees' },
+export const TYPE_INFO: Record<DiagramType, { label: string; hint: string }> = {
+  flowchart: { label: 'Flowchart', hint: 'Steps and decisions' },
+  mindmap: { label: 'Mind map', hint: 'Brainstorm ideas' },
+  orgchart: { label: 'Org chart', hint: 'Teams and family trees' },
 };

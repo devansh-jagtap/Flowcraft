@@ -1,0 +1,223 @@
+/* Editor, playground and shared view: toolbar, sidebar (AI chat or text) and canvas. */
+
+.workspace,
+.shared-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  min-height: 48px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border-strong);
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar-end {
+  margin-left: auto;
+}
+
+.title-input {
+  width: 220px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 13px !important;
+  font-weight: 600;
+}
+
+.title-input:hover {
+  background: color-mix(in srgb, var(--text) 5%, transparent) !important;
+}
+
+.title-input:focus {
+  background: var(--surface) !important;
+  box-shadow: var(--focus-ring) !important;
+}
+
+.save-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.theme-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 0.5px rgba(29, 29, 31, 0.2);
+  cursor: pointer;
+}
+
+.swatch.active {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--primary);
+}
+
+.workspace-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) 1fr;
+}
+
+.workspace-source {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--sidebar);
+  border-right: 0.5px solid var(--border-strong);
+}
+
+.workspace-canvas,
+.shared-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The Ask AI / Text switch is a full-width segmented control. */
+.side-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex-shrink: 0;
+  margin: 12px 14px 0;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.side-tabs button {
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+}
+
+.side-tabs button.active {
+  background: var(--surface);
+  box-shadow: var(--control-shadow);
+}
+
+/* ---------- Text editor ---------- */
+.source-editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.source-editor textarea {
+  flex: 1;
+  min-height: 220px;
+  padding: 14px 16px;
+  overflow: auto;
+  border: 0;
+  resize: none;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.8;
+  tab-size: 2;
+  white-space: pre;
+  /* Show "->" exactly as typed instead of a ligature arrow. */
+  font-variant-ligatures: none;
+}
+
+.issues {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 16px;
+  list-style: none;
+  border-top: 0.5px solid var(--border-strong);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.issues strong {
+  color: var(--text);
+}
+
+.syntax-help {
+  padding: 10px 16px;
+  border-top: 0.5px solid var(--border-strong);
+  font-size: 12px;
+}
+
+.syntax-help summary {
+  color: var(--muted);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.syntax-help summary:hover {
+  color: var(--text);
+}
+
+.syntax-help dl {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+
+.syntax-help dl div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.syntax-help dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* ---------- Shared (read-only) view ---------- */
+.shared-title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.shared-page .toolbar p {
+  margin: 0;
+}
+
+@media (max-width: 860px) {
+  .workspace-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 38%) 1fr;
+  }
+
+  .workspace-source {
+    border-right: 0;
+    border-bottom: 0.5px solid var(--border-strong);
+  }
+
+  .title-input {
+    width: 100% !important;
+  }
+
+  .toolbar-end {
+    margin-left: 0;
+  }
+}

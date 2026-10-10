@@ -1,4 +1,4 @@
-import { Schema, Types, model, type HydratedDocument } from 'mongoose';
+import { Schema, Types, model } from 'mongoose';
 import { DIAGRAM_THEMES, DIAGRAM_TYPES, DIRECTIONS, MAX_SOURCE_LENGTH } from './constants.js';
 import type { DiagramTheme, DiagramType, Direction } from './constants.js';
 
@@ -33,7 +33,6 @@ export interface IDiagram {
   updatedAt: Date;
 }
 
-export type DiagramDocument = HydratedDocument<IDiagram>;
 
 const pointSchema = new Schema<Point>({ x: Number, y: Number }, { _id: false });
 

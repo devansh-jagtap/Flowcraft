@@ -25,7 +25,7 @@ export default function SharedPage() {
   if (error || !diagram || !graph) {
     return (
       <div className="container page">
-        <EmptyState icon="🔒" title="This diagram isn't available">
+        <EmptyState title="This diagram isn't available">
           <p className="muted">{error?.message ?? 'It may be private or deleted.'}</p>
           <Link to="/try" className="btn btn-primary">
             Make your own diagram
@@ -60,13 +60,12 @@ export default function SharedPage() {
         <div>
           <h1 className="shared-title">{diagram.title}</h1>
           <p className="muted small">
-            {TYPE_INFO[diagram.type].icon} {TYPE_INFO[diagram.type].label} by <strong>{diagram.author}</strong> · updated{' '}
-            {timeAgo(diagram.updatedAt)} · {diagram.views} views
+            {TYPE_INFO[diagram.type].label} by {diagram.author}, updated {timeAgo(diagram.updatedAt)}, {diagram.views} views
           </p>
         </div>
         <div className="toolbar-group toolbar-end">
           <button className="btn btn-primary btn-sm" onClick={makeCopy} disabled={copying}>
-            ✎ Make a copy to edit
+            Make a copy
           </button>
         </div>
       </div>

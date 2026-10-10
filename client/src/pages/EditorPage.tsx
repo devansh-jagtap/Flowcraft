@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { diagramsApi } from '../api/diagrams';
 import type { Diagram, DiagramDraft } from '../api/types';
-import ShareModal from '../components/ShareModal';
+import ShareModal from '../components/editor/ShareModal';
 import { ErrorState, Spinner } from '../components/ui';
-import Workspace from '../components/Workspace';
+import Workspace from '../components/editor/Workspace';
 import { useAsync } from '../hooks/useAsync';
 
 type SaveState = 'saved' | 'pending' | 'saving' | 'error';
@@ -43,7 +43,7 @@ export default function EditorPage() {
       <div className="container page">
         <ErrorState error={error ?? new Error('Diagram not found')} onRetry={reload} />
         <p className="center">
-          <Link to="/app">← Back to my diagrams</Link>
+          <Link to="/app">Back to my diagrams</Link>
         </p>
       </div>
     );
@@ -97,12 +97,12 @@ function Editor({ diagram, onDiagramChange }: { diagram: Diagram; onDiagramChang
   }, [save]);
 
   const status = {
-    saved: '✓ Saved',
+    saved: 'Saved',
     pending: 'Unsaved changes',
     saving: 'Saving…',
     error: (
       <button className="link-btn danger" onClick={save}>
-        ⚠ Save failed — retry
+        Save failed. Retry
       </button>
     ),
   }[saveState];
@@ -116,10 +116,10 @@ function Editor({ diagram, onDiagramChange }: { diagram: Diagram; onDiagramChang
         actions={
           <>
             <Link to="/app" className="btn btn-ghost btn-sm">
-              ← All diagrams
+              All diagrams
             </Link>
             <button className="btn btn-primary btn-sm" onClick={() => setSharing(true)}>
-              {diagram.isPublic ? '🔗 Shared' : 'Share'}
+              {diagram.isPublic ? 'Shared' : 'Share'}
             </button>
           </>
         }

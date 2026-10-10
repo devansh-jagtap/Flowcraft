@@ -4,7 +4,7 @@ import { DIAGRAM_TYPES, DIRECTIONS, MAX_SOURCE_LENGTH, type DiagramType } from '
 import { HttpError } from '../lib/HttpError.js';
 import { checkSource } from './checkSource.js';
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT } from './diagramPrompt.js';
-import { generateJson, type GenerateJsonOptions } from './gemini.js';
+import { generateJson, type GenerateJsonOptions } from './llm.js';
 
 const aiDiagramSchema = z.object({
   title: z.string().trim().min(1).max(100),

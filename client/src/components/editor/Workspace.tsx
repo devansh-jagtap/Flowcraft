@@ -1,14 +1,14 @@
 import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
-import type { DiagramDraft, GeneratedDiagram } from '../api/types';
-import { useAiEnabled } from '../hooks/useAiEnabled';
-import { parseDiagram } from '../lib/diagram/parse';
-import { TYPE_INFO } from '../lib/diagram/templates';
-import type { DiagramType, Direction } from '../lib/diagram/types';
-import AiPanel from './AiPanel';
-import DiagramCanvas from './diagram/DiagramCanvas';
+import type { DiagramDraft, GeneratedDiagram } from '../../api/types';
+import { useAiEnabled } from '../../hooks/useAiEnabled';
+import { parseDiagram } from '../../lib/diagram/parse';
+import { TYPE_INFO } from '../../lib/diagram/templates';
+import type { DiagramType, Direction } from '../../lib/diagram/types';
+import AiPanel from '../ai/AiPanel';
+import DiagramCanvas from '../diagram/DiagramCanvas';
 import SourceEditor from './SourceEditor';
 import ThemePicker from './ThemePicker';
-import { Segmented } from './ui';
+import { Segmented } from '../ui';
 
 interface Props {
   draft: DiagramDraft;
@@ -19,17 +19,12 @@ interface Props {
 
 const TYPE_OPTIONS = (Object.keys(TYPE_INFO) as DiagramType[]).map((t) => ({
   value: t,
-  label: (
-    <>
-      <span aria-hidden>{TYPE_INFO[t].icon}</span> <span className="hide-sm">{TYPE_INFO[t].label}</span>
-    </>
-  ),
-  title: TYPE_INFO[t].label,
+  label: TYPE_INFO[t].label,
 }));
 
 const DIRECTION_OPTIONS: { value: Direction; label: string; title: string }[] = [
-  { value: 'TB', label: '↓', title: 'Top to bottom' },
-  { value: 'LR', label: '→', title: 'Left to right' },
+  { value: 'TB', label: 'Vertical', title: 'Top to bottom' },
+  { value: 'LR', label: 'Horizontal', title: 'Left to right' },
 ];
 
 const MAX_UNDO = 10;
@@ -93,7 +88,7 @@ export default function Workspace({ draft, onChange, status, actions }: Props) {
           <ThemePicker value={draft.theme} onChange={(theme) => onChange({ theme })} />
           {hasManualLayout && (
             <button className="btn btn-ghost btn-sm" onClick={() => onChange({ positions: {} })} title="Forget dragged positions">
-              ↺ Tidy up
+              Reset layout
             </button>
           )}
         </div>
@@ -107,10 +102,10 @@ export default function Workspace({ draft, onChange, status, actions }: Props) {
         <aside className="workspace-source">
           <div className="side-tabs" role="tablist">
             <button role="tab" aria-selected={activeTab === 'ai'} className={activeTab === 'ai' ? 'active' : ''} onClick={() => setTab('ai')}>
-              ✨ Ask AI
+              Ask AI
             </button>
             <button role="tab" aria-selected={activeTab === 'text'} className={activeTab === 'text' ? 'active' : ''} onClick={() => setTab('text')}>
-              ✍️ Edit text
+              Text
             </button>
           </div>
           {activeTab === 'ai' ? (

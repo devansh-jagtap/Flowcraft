@@ -9,12 +9,9 @@ export function Spinner({ fullPage = false }: { fullPage?: boolean }) {
   );
 }
 
-export function EmptyState({ icon, title, children }: { icon: string; title: string; children?: ReactNode }) {
+export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="empty">
-      <div className="empty-icon" aria-hidden>
-        {icon}
-      </div>
       <h3>{title}</h3>
       {children}
     </div>
@@ -23,7 +20,7 @@ export function EmptyState({ icon, title, children }: { icon: string; title: str
 
 export function ErrorState({ error, onRetry }: { error: Error; onRetry?: () => void }) {
   return (
-    <EmptyState icon="⚠️" title="Something went wrong">
+    <EmptyState title="Something went wrong">
       <p className="muted">{error.message}</p>
       {onRetry && (
         <button className="btn btn-secondary" onClick={onRetry}>
@@ -31,16 +28,6 @@ export function ErrorState({ error, onRetry }: { error: Error; onRetry?: () => v
         </button>
       )}
     </EmptyState>
-  );
-}
-
-export function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
-  return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      {children}
-      {error ? <span className="field-error">{error}</span> : hint ? <span className="field-hint">{hint}</span> : null}
-    </label>
   );
 }
 
@@ -66,8 +53,8 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
       <div className="modal-inner">
         <header className="modal-header">
           <h2>{title}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">
-            ✕
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+            Close
           </button>
         </header>
         {children}

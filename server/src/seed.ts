@@ -44,13 +44,13 @@ Shower & get ready -> Coffee -> Commute -> (Start work)`,
     type: 'orgchart',
     direction: 'TB',
     theme: 'grape',
-    source: `CEO — Ananya
-  CTO — Rahul
-    Backend — Priya
-    Frontend — Arjun
-  Head of Design — Meera
-    Product Designer — Kabir
-  Head of Growth — Sara`,
+    source: `Ananya: CEO
+  Rahul: CTO
+    Priya: Backend
+    Arjun: Frontend
+  Meera: Head of Design
+    Kabir: Product Designer
+  Sara: Head of Growth`,
   },
 ] as const;
 

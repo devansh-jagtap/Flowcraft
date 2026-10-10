@@ -1,8 +1,8 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
-import { aiApi } from '../api/ai';
-import type { GeneratedDiagram } from '../api/types';
-import { useAiEnabled } from '../hooks/useAiEnabled';
-import { EXAMPLE_PROMPTS } from '../lib/examples';
+import { aiApi } from '../../api/ai';
+import type { GeneratedDiagram } from '../../api/types';
+import { useAiEnabled } from '../../hooks/useAiEnabled';
+import { EXAMPLE_PROMPTS } from '../../lib/examples';
 
 interface Props {
   onGenerated: (diagram: GeneratedDiagram, prompt: string) => Promise<void> | void;
@@ -13,11 +13,15 @@ interface Props {
 export function AiSetupNotice() {
   return (
     <div className="ai-notice">
-      <strong>AI isn't switched on yet.</strong> Add a free Gemini key from{' '}
-      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-        Google AI Studio
+      <strong>AI isn't switched on yet.</strong> Add a{' '}
+      <a href="https://vercel.com/ai-gateway" target="_blank" rel="noreferrer">
+        Vercel AI Gateway
       </a>{' '}
-      as <code>GEMINI_API_KEY</code> in <code>server/.env</code>, then restart the server. You can still use templates or write the text yourself.
+      key as <code>AI_GATEWAY_API_KEY</code> (or a{' '}
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+        Gemini
+      </a>{' '}
+      key as <code>GEMINI_API_KEY</code>) in <code>server/.env</code>, then restart the server. You can still use templates or write the text yourself.
     </div>
   );
 }
@@ -64,7 +68,7 @@ export default function PromptBox({ onGenerated, size = 'hero', autoFocus }: Pro
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Describe the diagram you want… e.g. “How does UPI payment work?”"
+          placeholder="Describe a diagram, like how a UPI payment works"
           maxLength={600}
           rows={size === 'hero' ? 3 : 2}
           disabled={busy || enabled === false}
@@ -77,23 +81,22 @@ export default function PromptBox({ onGenerated, size = 'hero', autoFocus }: Pro
               <span className="spinner spinner-sm" aria-hidden /> Drawing…
             </>
           ) : (
-            '✨ Generate'
+            'Generate'
           )}
         </button>
       </form>
 
-      {busy && <p className="prompt-status">Thinking about the best layout for your diagram… this takes a few seconds.</p>}
+      {busy && <p className="prompt-status">Drawing your diagram. This takes a few seconds.</p>}
       {error && <div className="alert">{error}</div>}
       {enabled === false && <AiSetupNotice />}
 
       {enabled !== false && !busy && (
         <div className="prompt-examples">
-          <span className="muted small">Try:</span>
-          {EXAMPLE_PROMPTS.slice(0, size === 'hero' ? 6 : 4).map((example) => (
+          {EXAMPLE_PROMPTS.slice(0, size === 'hero' ? 3 : 4).map((example) => (
             <button
               key={example}
               type="button"
-              className="chip chip-soft"
+              className="chip"
               onClick={() => {
                 setPrompt(example);
                 void run(example);

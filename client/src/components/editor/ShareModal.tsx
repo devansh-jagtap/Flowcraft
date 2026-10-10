@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { diagramsApi } from '../api/diagrams';
-import type { Diagram } from '../api/types';
-import { useToast } from '../context/ToastContext';
-import { Modal } from './ui';
+import { diagramsApi } from '../../api/diagrams';
+import type { Diagram } from '../../api/types';
+import { useToast } from '../../context/ToastContext';
+import { Modal } from '../ui';
 
 interface Props {
   diagram: Diagram;
@@ -37,7 +37,7 @@ export default function ShareModal({ diagram, onChange, onClose }: Props) {
         <label className="switch-row">
           <div>
             <strong>Anyone with the link can view</strong>
-            <p className="muted small">They can look, zoom, download and make their own copy — not edit yours.</p>
+            <p className="muted small">They can view, zoom, download and make their own copy. Only you can edit this one.</p>
           </div>
           <input type="checkbox" className="switch" checked={diagram.isPublic} disabled={saving} onChange={toggle} />
         </label>
@@ -50,7 +50,7 @@ export default function ShareModal({ diagram, onChange, onClose }: Props) {
             </button>
           </div>
         )}
-        {diagram.isPublic && <p className="muted small">👀 Viewed {diagram.views} times</p>}
+        {diagram.isPublic && <p className="muted small">Viewed {diagram.views} times</p>}
       </div>
     </Modal>
   );

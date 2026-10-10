@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { aiApi } from '../api/ai';
-import type { DiagramDraft, GeneratedDiagram } from '../api/types';
-import { useAiEnabled } from '../hooks/useAiEnabled';
-import { REFINE_EXAMPLES } from '../lib/examples';
-import { timeAgo } from '../lib/format';
+import { aiApi } from '../../api/ai';
+import type { DiagramDraft, GeneratedDiagram } from '../../api/types';
+import { useAiEnabled } from '../../hooks/useAiEnabled';
+import { REFINE_EXAMPLES } from '../../lib/examples';
+import { timeAgo } from '../../lib/format';
 import { AiSetupNotice } from './PromptBox';
 
 interface Props {
@@ -68,7 +68,7 @@ export default function AiPanel({ draft, onApply, onUndo }: Props) {
           <li className="ai-empty">
             <strong>{isEmpty ? 'Describe your diagram' : 'Ask for changes'}</strong>
             <span className="muted small">
-              {isEmpty ? 'Tell the AI what you want to visualise.' : 'The AI edits the current diagram — you can undo any change.'}
+              {isEmpty ? 'Tell the AI what you want to visualise.' : 'The AI edits the current diagram. You can undo any change.'}
             </span>
           </li>
         )}
@@ -94,14 +94,14 @@ export default function AiPanel({ draft, onApply, onUndo }: Props) {
       {error && <div className="alert">{error}</div>}
       {onUndo && !busy && (
         <button className="link-btn undo-btn" onClick={onUndo}>
-          ↶ Undo last AI change
+          Undo last change
         </button>
       )}
 
       {!busy && !isEmpty && (
         <div className="prompt-examples">
           {REFINE_EXAMPLES[draft.type].map((example) => (
-            <button key={example} type="button" className="chip chip-soft" onClick={() => setPrompt(example)}>
+            <button key={example} type="button" className="chip" onClick={() => setPrompt(example)}>
               {example}
             </button>
           ))}
@@ -120,7 +120,7 @@ export default function AiPanel({ draft, onApply, onUndo }: Props) {
           aria-label={isEmpty ? 'Describe your diagram' : 'Describe a change'}
         />
         <button className="btn btn-primary btn-sm prompt-submit" disabled={busy || prompt.trim().length < 3}>
-          {busy ? '…' : '✨ Send'}
+          {busy ? 'Sending…' : 'Send'}
         </button>
       </form>
     </div>

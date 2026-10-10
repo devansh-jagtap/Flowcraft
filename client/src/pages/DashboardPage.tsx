@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { diagramsApi } from '../api/diagrams';
-import type { Diagram } from '../api/types';
+import type { Diagram, DiagramStats } from '../api/types';
 import { DiagramThumbnail } from '../components/diagram/DiagramThumbnail';
-import NewDiagramModal, { type NewDiagramChoice } from '../components/NewDiagramModal';
+import NewDiagramModal, { type NewDiagramChoice } from '../components/library/NewDiagramModal';
 import { EmptyState, ErrorState, Spinner } from '../components/ui';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useAsync } from '../hooks/useAsync';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
@@ -14,23 +13,37 @@ import { TYPE_INFO } from '../lib/diagram/templates';
 import type { DiagramType } from '../lib/diagram/types';
 import { timeAgo } from '../lib/format';
 
-const FILTERS: { value: 'all' | DiagramType; label: string }[] = [
-  { value: 'all', label: 'All' },
-  ...(Object.keys(TYPE_INFO) as DiagramType[]).map((t) => ({ value: t, label: `${TYPE_INFO[t].icon} ${TYPE_INFO[t].label}` })),
-];
+/** What the sidebar is showing: everything, starred diagrams, or one diagram type. */
+type View = 'all' | 'starred' | DiagramType;
+
+const TYPES = Object.keys(TYPE_INFO) as DiagramType[];
+
+const VIEW_TITLES: Record<View, string> = {
+  all: 'All diagrams',
+  starred: 'Starred',
+  flowchart: 'Flowcharts',
+  mindmap: 'Mind maps',
+  orgchart: 'Org charts',
+};
 
 export default function DashboardPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState('');
-  const [type, setType] = useState<'all' | DiagramType>('all');
+  const [view, setView] = useState<View>('all');
   const [sort, setSort] = useState('updated');
   const q = useDebouncedValue(search.trim(), 250);
 
-  const list = useAsync((signal) => diagramsApi.list({ q, type, sort }, signal), [q, type, sort]);
+  const list = useAsync(
+    (signal) =>
+      diagramsApi.list(
+        { q, sort, type: view === 'all' || view === 'starred' ? 'all' : view, starred: view === 'starred' ? 'true' : undefined },
+        signal
+      ),
+    [q, view, sort]
+  );
   const stats = useAsync((signal) => diagramsApi.stats(signal), []);
 
   // A guest who clicked "Sign up to save" in the playground lands here: import their work.
@@ -43,7 +56,7 @@ export default function DashboardPage() {
     diagramsApi
       .create(draft)
       .then((diagram) => {
-        toast('Your playground diagram was saved 🎉', 'success');
+        toast('Your playground diagram was saved', 'success');
         navigate(`/d/${diagram._id}`);
       })
       .catch((err: Error) => toast(`Could not import your draft: ${err.message}`, 'error'));
@@ -65,6 +78,7 @@ export default function DashboardPage() {
     replace({ ...diagram, starred: !diagram.starred });
     try {
       await diagramsApi.update(diagram._id, { starred: !diagram.starred });
+      if (view === 'starred') list.setData((items) => items?.filter((d) => d._id !== diagram._id || !diagram.starred));
     } catch (err) {
       replace(diagram);
       toast((err as Error).message, 'error');
@@ -94,124 +108,139 @@ export default function DashboardPage() {
     }
   }
 
-  const isFiltered = Boolean(q) || type !== 'all';
+  const isFiltered = Boolean(q) || view !== 'all';
+  const count = list.data?.length;
 
   return (
-    <div className="container page">
-      <div className="page-header">
-        <div>
-          <h1>Hi {user?.name.split(' ')[0]} 👋</h1>
-          <p className="muted">What are we drawing today?</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setCreating(true)}>
-          ＋ New diagram
-        </button>
-      </div>
+    <div className="library">
+      <Sidebar view={view} onChange={setView} stats={stats.data} />
 
-      {stats.data && (
-        <div className="stats">
-          <div className="stat">
-            <strong>{stats.data.diagrams}</strong>
-            <span>Diagrams</span>
+      <section className="library-main">
+        <header className="library-toolbar">
+          <div className="library-heading">
+            <h1>{VIEW_TITLES[view]}</h1>
+            {count !== undefined && (
+              <p className="muted small">
+                {count} {count === 1 ? 'diagram' : 'diagrams'}
+              </p>
+            )}
           </div>
-          {(Object.keys(TYPE_INFO) as DiagramType[]).map((t) => (
-            <div className="stat" key={t}>
-              <strong>{stats.data!.byType[t]}</strong>
-              <span>
-                {TYPE_INFO[t].icon} {TYPE_INFO[t].label}s
-              </span>
+          <input
+            type="search"
+            className="search"
+            placeholder="Search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search diagrams"
+          />
+          <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort by">
+            <option value="updated">Recently edited</option>
+            <option value="created">Newest</option>
+            <option value="title">Title A–Z</option>
+          </select>
+          <button className="btn btn-primary" onClick={() => setCreating(true)}>
+            New diagram
+          </button>
+        </header>
+
+        <div className="library-content">
+          {list.loading && !list.data && <Spinner />}
+          {list.error && <ErrorState error={list.error} onRetry={list.reload} />}
+
+          {list.data?.length === 0 &&
+            (isFiltered ? (
+              <EmptyState title="Nothing here">
+                <p className="muted">{q ? 'No diagram titles match your search.' : 'Diagrams you add here will show up in this list.'}</p>
+              </EmptyState>
+            ) : (
+              <EmptyState title="No diagrams yet">
+                <p className="muted">Describe one or pick a template to get started.</p>
+                <button className="btn btn-primary" onClick={() => setCreating(true)}>
+                  New diagram
+                </button>
+              </EmptyState>
+            ))}
+
+          {list.data && list.data.length > 0 && (
+            <div className="diagram-grid">
+              {list.data.map((d) => (
+                <DiagramCard key={d._id} diagram={d} onStar={toggleStar} onDuplicate={duplicate} onDelete={remove} />
+              ))}
             </div>
-          ))}
-          <div className="stat">
-            <strong>{stats.data.views}</strong>
-            <span>Views on shared links</span>
-          </div>
+          )}
         </div>
-      )}
-
-      <div className="filters">
-        <input
-          type="search"
-          className="search"
-          placeholder="Search diagrams…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search diagrams"
-        />
-        <div className="chips">
-          {FILTERS.map((f) => (
-            <button key={f.value} className={`chip${type === f.value ? ' active' : ''}`} onClick={() => setType(f.value)}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort by">
-          <option value="updated">Recently edited</option>
-          <option value="created">Newest</option>
-          <option value="title">Title A–Z</option>
-        </select>
-      </div>
-
-      {list.loading && !list.data && <Spinner />}
-      {list.error && <ErrorState error={list.error} onRetry={list.reload} />}
-
-      {list.data?.length === 0 &&
-        (isFiltered ? (
-          <EmptyState icon="🔍" title="No diagrams match">
-            <p className="muted">Try a different search or filter.</p>
-          </EmptyState>
-        ) : (
-          <EmptyState icon="🎨" title="Your canvas is empty">
-            <p className="muted">Pick a template and have your first diagram in under a minute.</p>
-            <button className="btn btn-primary" onClick={() => setCreating(true)}>
-              Create a diagram
-            </button>
-          </EmptyState>
-        ))}
-
-      {list.data && list.data.length > 0 && (
-        <div className="diagram-grid">
-          {list.data.map((d) => (
-            <article key={d._id} className="diagram-card">
-              <Link to={`/d/${d._id}`} className="diagram-card-preview" aria-label={`Open ${d.title}`}>
-                <DiagramThumbnail type={d.type} source={d.source} theme={d.theme} direction={d.direction} />
-              </Link>
-              <div className="diagram-card-body">
-                <div className="diagram-card-title">
-                  <Link to={`/d/${d._id}`}>
-                    <h3>{d.title}</h3>
-                  </Link>
-                  <button
-                    className={`star${d.starred ? ' on' : ''}`}
-                    onClick={() => toggleStar(d)}
-                    aria-pressed={d.starred}
-                    aria-label={d.starred ? 'Unstar' : 'Star'}
-                  >
-                    {d.starred ? '★' : '☆'}
-                  </button>
-                </div>
-                <div className="diagram-card-meta">
-                  <span className="badge">
-                    {TYPE_INFO[d.type].icon} {TYPE_INFO[d.type].label}
-                  </span>
-                  {d.isPublic && <span className="badge badge-green">🔗 Shared</span>}
-                  <span className="muted small">Edited {timeAgo(d.updatedAt)}</span>
-                </div>
-                <div className="diagram-card-actions">
-                  <button className="link-btn" onClick={() => duplicate(d)}>
-                    Duplicate
-                  </button>
-                  <button className="link-btn danger" onClick={() => remove(d)}>
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+      </section>
 
       {creating && <NewDiagramModal onClose={() => setCreating(false)} onCreate={create} />}
     </div>
+  );
+}
+
+/** Finder-style source list: library views on top, diagram types below. */
+function Sidebar({ view, onChange, stats }: { view: View; onChange: (view: View) => void; stats?: DiagramStats }) {
+  const item = (value: View, count?: number) => (
+    <li key={value}>
+      <button className={`sidebar-item${view === value ? ' active' : ''}`} aria-current={view === value} onClick={() => onChange(value)}>
+        <span>{VIEW_TITLES[value]}</span>
+        {count !== undefined && <span className="sidebar-count">{count}</span>}
+      </button>
+    </li>
+  );
+
+  return (
+    <aside className="library-sidebar" aria-label="Library">
+      <p className="sidebar-heading">Library</p>
+      <ul>
+        {item('all', stats?.diagrams)}
+        {item('starred')}
+      </ul>
+      <p className="sidebar-heading">Types</p>
+      <ul>{TYPES.map((t) => item(t, stats?.byType[t]))}</ul>
+      {stats && stats.shared > 0 && (
+        <p className="sidebar-note muted small">
+          {stats.shared} shared, {stats.views} {stats.views === 1 ? 'view' : 'views'}
+        </p>
+      )}
+    </aside>
+  );
+}
+
+interface CardProps {
+  diagram: Diagram;
+  onStar: (d: Diagram) => void;
+  onDuplicate: (d: Diagram) => void;
+  onDelete: (d: Diagram) => void;
+}
+
+function DiagramCard({ diagram: d, onStar, onDuplicate, onDelete }: CardProps) {
+  return (
+    <article className="diagram-card">
+      <Link to={`/d/${d._id}`} className="diagram-card-preview" aria-label={`Open ${d.title}`}>
+        <DiagramThumbnail type={d.type} source={d.source} theme={d.theme} direction={d.direction} />
+      </Link>
+      <div className="diagram-card-body">
+        <div className="diagram-card-title">
+          <Link to={`/d/${d._id}`}>
+            <h3>{d.title}</h3>
+          </Link>
+          <button className={`star${d.starred ? ' on' : ''}`} onClick={() => onStar(d)} aria-pressed={d.starred}>
+            {d.starred ? 'Starred' : 'Star'}
+          </button>
+        </div>
+        <div className="diagram-card-meta">
+          <span>{TYPE_INFO[d.type].label}</span>
+          <span>Edited {timeAgo(d.updatedAt)}</span>
+          {d.isPublic && <span className="shared-flag">Shared</span>}
+        </div>
+        <div className="diagram-card-actions">
+          <button className="link-btn" onClick={() => onDuplicate(d)}>
+            Duplicate
+          </button>
+          <button className="link-btn danger" onClick={() => onDelete(d)}>
+            Delete
+          </button>
+        </div>
+      </div>
+    </article>
   );
 }

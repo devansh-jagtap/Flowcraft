@@ -1,12 +1,12 @@
 import { useRef, type KeyboardEvent } from 'react';
-import type { DiagramType, ParseIssue } from '../lib/diagram/types';
+import type { DiagramType, ParseIssue } from '../../lib/diagram/types';
 
 const INDENT = '  ';
 
 const HELP: Record<DiagramType, { syntax: string; meaning: string }[]> = {
   flowchart: [
     { syntax: 'A -> B -> C', meaning: 'steps connected by arrows' },
-    { syntax: 'Ready?', meaning: 'ending with ? makes a decision ◇' },
+    { syntax: 'Ready?', meaning: 'ending with ? makes a decision' },
     { syntax: 'Ready? -> Go: yes', meaning: 'label an arrow after ": "' },
     { syntax: '(Start)', meaning: 'round start / end step' },
     { syntax: '# note', meaning: 'comment, ignored' },
@@ -15,10 +15,9 @@ const HELP: Record<DiagramType, { syntax: string; meaning: string }[]> = {
     { syntax: 'Main idea', meaning: 'first line is the centre' },
     { syntax: '  Topic', meaning: 'indent to branch out (Tab)' },
     { syntax: '    Detail', meaning: 'indent more to go deeper' },
-    { syntax: '- bullet', meaning: 'pasted bullet lists work too' },
   ],
   orgchart: [
-    { syntax: 'Name — Role', meaning: 'second line on the card' },
+    { syntax: 'Name: Role', meaning: 'adds a second line to the card' },
     { syntax: '  Report', meaning: 'indent = reports to the line above' },
     { syntax: 'Shift+Tab', meaning: 'move a line back out' },
   ],

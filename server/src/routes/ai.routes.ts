@@ -10,7 +10,7 @@ const limiter = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skip: () => env.isTest,
-  message: { error: { message: "You're generating very quickly — please wait a few minutes." } },
+  message: { error: { message: "You're generating very quickly. Please wait a few minutes." } },
 });
 
 export const aiRoutes = Router().get('/status', ai.status).post('/generate', limiter, ai.generate);

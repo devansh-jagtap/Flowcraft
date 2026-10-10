@@ -1,5 +1,5 @@
-import { THEME_NAMES, THEMES } from '../lib/diagram/themes';
-import type { ThemeName } from '../lib/diagram/types';
+import { THEME_NAMES, THEMES } from '../../lib/diagram/themes';
+import type { ThemeName } from '../../lib/diagram/types';
 
 export default function ThemePicker({ value, onChange }: { value: ThemeName; onChange: (theme: ThemeName) => void }) {
   return (

@@ -128,16 +128,16 @@ function Canvas({ graph, type, direction, theme: themeName, positions = NO_POSIT
       {exportName !== undefined && (
         <Panel position="top-right" className="export-panel">
           <button className="btn btn-secondary btn-sm" disabled={exporting} onClick={() => handleExport('png')}>
-            ⬇ PNG
+            PNG
           </button>
           <button className="btn btn-secondary btn-sm" disabled={exporting} onClick={() => handleExport('svg')}>
-            ⬇ SVG
+            SVG
           </button>
         </Panel>
       )}
       {graph.nodes.length === 0 && (
         <Panel position="top-center" className="canvas-empty">
-          Start typing on the left — your diagram appears here ✨
+          Your diagram appears here as you type
         </Panel>
       )}
     </ReactFlow>

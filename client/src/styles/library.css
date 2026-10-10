@@ -1,0 +1,233 @@
+/* "My diagrams": a Freeform-style window with a source-list sidebar and a board grid. */
+
+.library {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+}
+
+.library-sidebar {
+  overflow-y: auto;
+  padding: 20px 12px;
+  background: var(--sidebar);
+  border-right: 0.5px solid var(--border-strong);
+}
+
+.library-sidebar ul {
+  display: grid;
+  gap: 1px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-heading {
+  margin: 0 0 4px;
+  padding: 0 10px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sidebar-item {
+  width: 100%;
+  height: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+  cursor: default;
+}
+
+.sidebar-item:hover {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.sidebar-item.active {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  font-weight: 500;
+}
+
+.sidebar-count {
+  color: var(--faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-note {
+  margin: 0;
+  padding: 0 10px;
+}
+
+.library-main {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.library-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 32px 18px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.library-heading {
+  margin-right: auto;
+}
+
+.library-heading h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.library-heading p {
+  margin: 0;
+}
+
+.library-toolbar .search {
+  width: 200px;
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.library-toolbar select {
+  width: auto;
+}
+
+.library-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px 56px;
+}
+
+.diagram-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 36px 24px;
+}
+
+.diagram-card-preview {
+  display: block;
+  border-radius: var(--radius);
+}
+
+.diagram-card-preview .thumb {
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, transform 0.3s var(--ease);
+}
+
+.diagram-card-preview:hover .thumb {
+  box-shadow: 0 0 0 2px var(--primary), var(--shadow);
+}
+
+.diagram-card-body {
+  display: grid;
+  gap: 2px;
+  padding-top: 10px;
+}
+
+.diagram-card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.diagram-card-title h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.diagram-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.shared-flag {
+  color: var(--success);
+}
+
+.diagram-card-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.star {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.star:hover,
+.star.on {
+  color: var(--text);
+}
+
+/* Phones: the sidebar becomes a row of tabs above the grid. */
+@media (max-width: 768px) {
+  .library {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .library-sidebar {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 8px 12px;
+    border-right: 0;
+    border-bottom: 0.5px solid var(--border-strong);
+  }
+
+  .library-sidebar ul {
+    display: flex;
+    gap: 4px;
+    margin: 0;
+  }
+
+  .sidebar-item {
+    white-space: nowrap;
+  }
+
+  .sidebar-heading,
+  .sidebar-note,
+  .sidebar-count {
+    display: none;
+  }
+
+  .library-toolbar,
+  .library-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .library-toolbar .search {
+    width: auto;
+    flex: 1 1 140px;
+  }
+}

@@ -14,7 +14,7 @@ Choose the diagram type:
 If the user explicitly names a type, use it.
 
 FLOWCHART SYNTAX:
-- Every step must be connected with arrows. Don't list steps on their own lines — write the connections.
+- Every step must be connected with arrows. Don't list steps on their own lines; write the connections.
 - Arrows: A -> B -> C (a chain on one line is fine and encouraged for straight sequences)
 - A step ending with "?" is a decision diamond. Label its outgoing arrows with ": yes" / ": no" (or other short answers) at the END of the line, e.g. "Payment ok? -> Ship order: yes"
 - Wrap the first and last steps in parentheses to make start/end pills: "(Customer opens app)", "(Order delivered)"
@@ -30,7 +30,7 @@ Show dashboard -> (Done)
 
 MIND MAP / ORG CHART SYNTAX (indented outline, 2 spaces per level):
 - The first line is the single root at indentation 0. Every other line is indented under it.
-- Org chart cards can have a second line using " — " (em dash with spaces): "Priya — Head of Engineering"
+- Org chart cards can have a second line after a colon and a space: "Priya: Head of Engineering"
 Example mind map:
 Learn Python
   Basics
@@ -39,16 +39,16 @@ Learn Python
   Projects
     Web scraper
 Example org chart:
-Ananya — CEO
-  Rahul — CTO
-    Priya — Backend Engineer
-  Meera — Design Lead
+Ananya: CEO
+  Rahul: CTO
+    Priya: Backend Engineer
+  Meera: Design Lead
 
 QUALITY RULES:
-- Keep each step/topic short: 2–7 words, sentence case, no trailing periods.
-- Aim for 6–20 nodes. Be specific and genuinely useful, not generic.
+- Keep each step/topic short: 2 to 7 words, sentence case, no trailing periods.
+- Aim for 6 to 20 nodes. Be specific and genuinely useful, not generic.
 - Flowcharts should have a clear start and end and include the important decisions and failure paths.
-- Mind maps: 3–6 main branches with 2–4 children each.
+- Mind maps: 3 to 6 main branches with 2 to 4 children each.
 - Write in the same language as the user's request.
 - "title" is a short, human title for the diagram (max 60 characters).
 - "direction" is "TB" (top to bottom) for most flowcharts, "LR" for long linear processes; use "TB" for mind maps and org charts.

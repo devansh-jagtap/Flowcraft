@@ -18,6 +18,13 @@ const geminiReply = (payload: unknown) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+/** Fakes AI Gateway's OpenAI-compatible response shape around a JSON payload. */
+const gatewayReply = (payload: unknown) =>
+  new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(payload) }, finish_reason: 'stop' }] }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 describe('checkSource', () => {
   it('accepts valid flowcharts and trees', () => {
     expect(checkSource('flowchart', FLOW.source)).toEqual([]);
@@ -93,19 +100,24 @@ describe('generateDiagram', () => {
 
 describe('AI routes', () => {
   const originalKey = env.gemini.apiKey;
+  const originalGatewayKey = env.aiGateway.apiKey;
   let fetchMock: ReturnType<typeof vi.fn>;
   const realFetch = globalThis.fetch;
 
   beforeEach(() => {
     (env.gemini as { apiKey: string }).apiKey = 'test-key';
+    (env.aiGateway as { apiKey: string }).apiKey = '';
     fetchMock = vi.fn();
-    // Only intercept calls to Gemini; supertest talks to the app directly.
+    // Only intercept calls to the AI providers; supertest talks to the app directly.
     globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) =>
-      String(input).startsWith(env.gemini.baseUrl) ? fetchMock(input, init) : realFetch(input, init)) as typeof fetch;
+      String(input).startsWith(env.gemini.baseUrl) || String(input).startsWith(env.aiGateway.baseUrl)
+        ? fetchMock(input, init)
+        : realFetch(input, init)) as typeof fetch;
   });
 
   afterEach(() => {
     (env.gemini as { apiKey: string }).apiKey = originalKey;
+    (env.aiGateway as { apiKey: string }).apiKey = originalGatewayKey;
     globalThis.fetch = realFetch;
   });
 
@@ -150,5 +162,52 @@ describe('AI routes', () => {
   it('reports blocked prompts', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ promptFeedback: { blockReason: 'SAFETY' } }), { status: 200 }));
     await api().post('/api/ai/generate').send({ prompt: 'something blocked' }).expect(400);
+  });
+
+  describe('via Vercel AI Gateway', () => {
+    beforeEach(() => {
+      (env.aiGateway as { apiKey: string }).apiKey = 'gw-key';
+    });
+
+    it('is preferred over Gemini and enables AI on its own', async () => {
+      (env.gemini as { apiKey: string }).apiKey = '';
+      expect((await api().get('/api/ai/status').expect(200)).body).toEqual({ enabled: true });
+    });
+
+    it('calls chat completions with a strict JSON schema and returns the diagram', async () => {
+      fetchMock.mockResolvedValue(gatewayReply(FLOW));
+      const res = await api().post('/api/ai/generate').send({ prompt: 'login flow for an app' }).expect(200);
+
+      expect(res.body.diagram).toEqual(FLOW);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(String(url)).toBe(`${env.aiGateway.baseUrl}/chat/completions`);
+      expect(init.headers.Authorization).toBe('Bearer gw-key');
+      const body = JSON.parse(init.body);
+      expect(body.model).toBe(env.aiGateway.model);
+      expect(body.messages[0].role).toBe('system');
+      expect(body.messages[1]).toEqual({ role: 'user', content: 'login flow for an app' });
+      const { schema } = body.response_format.json_schema;
+      expect(schema.type).toBe('object');
+      expect(schema.properties.source.type).toBe('string');
+      expect(schema.additionalProperties).toBe(false);
+      expect(schema.propertyOrdering).toBeUndefined();
+    });
+
+    it('sends the retry conversation with assistant turns', async () => {
+      fetchMock
+        .mockResolvedValueOnce(gatewayReply({ ...FLOW, source: 'just one lonely step' }))
+        .mockResolvedValueOnce(gatewayReply(FLOW));
+      await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(200);
+      const roles = JSON.parse(fetchMock.mock.calls[1][1].body).messages.map((m: { role: string }) => m.role);
+      expect(roles).toEqual(['system', 'user', 'assistant', 'user']);
+    });
+
+    it('maps gateway errors to friendly messages', async () => {
+      fetchMock.mockResolvedValueOnce(new Response('limit', { status: 429 }));
+      await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(429);
+      fetchMock.mockResolvedValueOnce(new Response('bad key', { status: 401 }));
+      const res = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(503);
+      expect(res.body.error.message).toMatch(/AI_GATEWAY_API_KEY/);
+    });
   });
 });

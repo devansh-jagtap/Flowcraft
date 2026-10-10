@@ -1,0 +1,179 @@
+/* Diagram rendering: React Flow node shapes and controls, static thumbnails, template cards. */
+
+.shape-node {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.shape-bg {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(29, 29, 31, 0.06);
+}
+
+.shape-terminal .shape-bg {
+  border-radius: 999px;
+}
+
+.shape-topic .shape-bg {
+  border-radius: 12px;
+}
+
+.shape-topic.is-root {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.shape-topic.is-root .shape-bg {
+  box-shadow: 0 4px 14px rgba(29, 29, 31, 0.12);
+}
+
+.diamond {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 1px 3px rgba(29, 29, 31, 0.06));
+}
+
+.shape-label {
+  position: relative;
+  display: grid;
+  padding: 6px 14px;
+  overflow-wrap: anywhere;
+}
+
+.shape-decision .shape-label {
+  padding: 0 28px;
+}
+
+.shape-label small {
+  font-size: 11.5px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.hidden-handle {
+  opacity: 0;
+  pointer-events: none;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: 0 !important;
+}
+
+.react-flow__node.selected .shape-bg,
+.react-flow__node:focus-visible .shape-bg {
+  outline: 3px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  outline-offset: 3px;
+}
+
+.react-flow__node.draggable {
+  cursor: grab;
+}
+
+.react-flow__controls,
+.react-flow__minimap {
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow) !important;
+}
+
+.react-flow__controls-button {
+  border-bottom-color: var(--border) !important;
+}
+
+.react-flow__attribution {
+  background: transparent !important;
+  opacity: 0.5;
+}
+
+.export-panel {
+  display: flex;
+  gap: 6px;
+}
+
+.canvas-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---------- Thumbnails and template cards ---------- */
+.thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius);
+}
+
+.thumb-empty,
+.thumb-blank {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 22px 18px;
+}
+
+.template-card {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.template-card:hover {
+  text-decoration: none;
+}
+
+.template-card:focus-visible {
+  outline: none;
+}
+
+.template-card .thumb {
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s;
+}
+
+.template-card:hover .thumb,
+.template-card:focus-visible .thumb {
+  box-shadow: 0 0 0 2px var(--primary), var(--shadow);
+}
+
+.template-card .thumb-blank {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.template-card strong {
+  margin-top: 10px;
+  font-weight: 500;
+}
+
+@media (max-width: 860px) {
+  .react-flow__minimap {
+    display: none;
+  }
+}

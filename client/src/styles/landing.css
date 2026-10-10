@@ -1,0 +1,197 @@
+/* Landing page: split hero with a MacBook, the four steps, the template gallery. */
+
+/* The MacBook's base is wider than its lid; never let it cause sideways page scroll. */
+.landing {
+  overflow-x: clip;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 11fr) minmax(0, 13fr);
+  align-items: center;
+  gap: 64px;
+  min-height: calc(100dvh - var(--nav-height));
+  padding-top: 56px;
+  padding-bottom: 72px;
+}
+
+.hero-copy {
+  display: grid;
+  gap: 0;
+  animation: hero-copy 0.9s var(--ease) both;
+}
+
+@keyframes hero-copy {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+.hero h1 {
+  margin-bottom: 20px;
+  font-size: clamp(42px, 4.6vw, 72px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.lead {
+  max-width: 26em;
+  margin-bottom: 32px;
+  color: var(--muted);
+  font-size: 19px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.hero-alt {
+  margin: 18px 0 0;
+}
+
+.device-caption {
+  margin: 22px 0 0;
+  text-align: center;
+}
+
+/* ---------- Steps ---------- */
+.how {
+  padding-top: 96px;
+  padding-bottom: 120px;
+}
+
+.section-title {
+  max-width: 24ch;
+  margin-bottom: 40px;
+  font-size: clamp(30px, 3.6vw, 48px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  padding-top: 18px;
+  border-top: 0.5px solid var(--border-strong);
+  counter-increment: step;
+}
+
+.steps li::before {
+  content: counter(step);
+  display: block;
+  margin-bottom: 28px;
+  color: var(--faint);
+  font-family: var(--display);
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.steps h3 {
+  margin-bottom: 6px;
+  font-size: 17px;
+}
+
+.steps p {
+  max-width: 30ch;
+  font-size: 14px;
+}
+
+/* ---------- Template gallery (scrolls sideways, like Apple's product strips) ---------- */
+.templates-section {
+  padding: 96px 0 24px;
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+}
+
+.gallery {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 300px;
+  gap: 24px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: max(32px, calc((100vw - 1280px) / 2 + 32px));
+  padding: 4px max(32px, calc((100vw - 1280px) / 2 + 32px)) 40px;
+  scrollbar-width: thin;
+}
+
+.gallery .template-card {
+  scroll-snap-align: start;
+}
+
+.footer {
+  padding: 28px 0 40px;
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+}
+
+@media (max-width: 1024px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 56px;
+    min-height: 0;
+    padding-top: 64px;
+  }
+
+  .hero-copy {
+    max-width: 640px;
+  }
+
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 48px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding-top: 40px;
+  }
+
+  .lead {
+    font-size: 17px;
+  }
+
+  /* The demo shows only the diagram on phones, so the caption about the text pane doesn't apply. */
+  .device-caption {
+    display: none;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+    row-gap: 36px;
+  }
+
+  .steps li::before {
+    margin-bottom: 16px;
+    font-size: 34px;
+  }
+
+  .how {
+    padding-top: 72px;
+    padding-bottom: 88px;
+  }
+
+  .templates-section {
+    padding-top: 72px;
+  }
+
+  .gallery {
+    grid-auto-columns: 78%;
+    gap: 16px;
+    padding-inline: 16px;
+    scroll-padding-inline: 16px;
+  }
+}

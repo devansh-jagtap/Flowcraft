@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { diagramsApi } from '../api/diagrams';
 import type { DiagramDraft } from '../api/types';
-import Workspace from '../components/Workspace';
+import Workspace from '../components/editor/Workspace';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { guestDraft, pendingImport } from '../lib/draft';
@@ -54,7 +54,7 @@ export default function PlaygroundPage() {
     <Workspace
       draft={draft}
       onChange={(changes) => setDraft((d) => ({ ...d, ...changes }))}
-      status={user ? 'Not saved yet' : 'Playground · saved in this browser'}
+      status={user ? 'Not saved yet' : 'Saved in this browser'}
       actions={
         <button className="btn btn-primary btn-sm" onClick={saveToAccount} disabled={saving}>
           {user ? 'Save to my diagrams' : 'Sign up to save'}

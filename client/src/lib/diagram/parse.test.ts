@@ -99,9 +99,16 @@ describe('parseTree', () => {
     expect(new Set(ids).size).toBe(3);
   });
 
-  it('splits "Name — Role" into title and subtitle for org charts', () => {
-    const [node] = parseTree('Ananya — CEO', { subtitles: true }).nodes;
+  it('splits "Name: Role" into title and subtitle for org charts', () => {
+    const [node] = parseTree('Ananya: CEO', { subtitles: true }).nodes;
     expect(node).toMatchObject({ label: 'Ananya', subtitle: 'CEO' });
+  });
+
+  it('still accepts the older dash separator for roles', () => {
+    for (const line of ['Ananya — CEO', 'Ananya - CEO']) {
+      const [node] = parseTree(line, { subtitles: true }).nodes;
+      expect(node).toMatchObject({ label: 'Ananya', subtitle: 'CEO' });
+    }
   });
 
   it('handles tabs and warns about extra top-level items', () => {

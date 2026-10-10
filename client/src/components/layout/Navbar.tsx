@@ -1,11 +1,10 @@
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/react';
 import { Link, NavLink } from 'react-router-dom';
 
-export function Logo() {
+function Logo() {
   return (
     <Link to="/" className="logo">
-      <img src="/favicon.svg" alt="" width={28} height={28} />
-      <span>Flowcraft</span>
+      Flowcraft
     </Link>
   );
 }
@@ -17,7 +16,7 @@ export default function Navbar() {
         <Logo />
         <nav className="navbar-links">
           <NavLink to="/try" className="nav-link hide-sm">
-            ✨ Create
+            Create
           </NavLink>
           <Show when="signed-in">
             <NavLink to="/app" className="nav-link">
@@ -30,7 +29,7 @@ export default function Navbar() {
               <button className="nav-link">Log in</button>
             </SignInButton>
             <SignUpButton>
-              <button className="btn btn-primary btn-sm">Sign up free</button>
+              <button className="btn btn-primary btn-sm">Sign up</button>
             </SignUpButton>
           </Show>
         </nav>

@@ -3,8 +3,9 @@ import type { Graph, GraphEdge, GraphNode, ParseIssue } from './types';
 
 const BULLET = /^(?:[-*+•]|\d+[.)])\s+/;
 const COMMENT = /^\s*(#|\/\/)/;
-// "Priya — Backend" / "Priya - Backend" → title + subtitle (used by org charts).
-const SUBTITLE = /\s+[—–-]\s+/;
+// "Priya: Backend" → title + subtitle (org charts only). The older
+// "Priya - Backend" form is still accepted so saved diagrams keep working.
+const SUBTITLE = /\s*:\s+|\s+[—–-]\s+/;
 
 const indentOf = (line: string) => {
   const leading = line.match(/^[\t ]*/)![0];
@@ -39,7 +40,7 @@ export function parseTree(source: string, { subtitles = false } = {}): Graph {
     const parent = stack[stack.length - 1];
 
     if (!parent && nodes.length > 0) {
-      issues.push({ line, message: 'Tip: indent this line to attach it to a parent — it starts a new tree' });
+      issues.push({ line, message: 'Indent this line to attach it to a parent. Right now it starts a new tree.' });
     }
 
     const [label, subtitle] = subtitles ? splitOnce(text, SUBTITLE) : [text, undefined];

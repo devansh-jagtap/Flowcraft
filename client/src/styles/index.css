@@ -1,0 +1,11 @@
+/* Global styles, one file per area of the app. Order matters: tokens first. */
+@import './tokens.css';
+@import './base.css';
+@import './controls.css';
+@import './feedback.css';
+@import './prompt.css';
+@import './diagram.css';
+@import './landing.css';
+@import './macbook.css';
+@import './library.css';
+@import './editor.css';
