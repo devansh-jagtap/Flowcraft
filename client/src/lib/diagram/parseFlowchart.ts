@@ -36,7 +36,8 @@ export function parseFlowchart(source: string): Graph {
   const issues: ParseIssue[] = [];
 
   const addNode = (token: Token, line: number): string => {
-    const id = slug(token.label);
+    // "Ship it" and "Ship it?" are different nodes, so the question mark is part of the id.
+    const id = slug(token.label) + (token.label.endsWith('?') ? '-q' : '');
     const existing = nodes.get(id);
     if (!existing) {
       nodes.set(id, { id, label: token.label, shape: token.shape ?? 'rect', depth: 0, line });
