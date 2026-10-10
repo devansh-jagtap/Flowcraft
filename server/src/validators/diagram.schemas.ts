@@ -14,6 +14,9 @@ const fields = {
     .record(z.string().max(200), point)
     .refine((p) => Object.keys(p).length <= 500, 'Too many node positions'),
   starred: z.boolean(),
+  prompts: z
+    .array(z.object({ text: z.string().trim().min(1).max(600), createdAt: z.coerce.date() }))
+    .max(50, 'Too many prompts'),
 };
 
 export const createDiagramSchema = z.object({
@@ -23,6 +26,7 @@ export const createDiagramSchema = z.object({
   theme: fields.theme.optional(),
   direction: fields.direction.optional(),
   positions: fields.positions.optional(),
+  prompts: fields.prompts.optional(),
 });
 
 export const updateDiagramSchema = z

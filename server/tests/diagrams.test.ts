@@ -122,3 +122,18 @@ describe('diagrams', () => {
     await api().get(`/api/diagrams/${diagram._id}`).set(auth).expect(404);
   });
 });
+
+describe('prompt history', () => {
+  it('stores the AI prompts on a diagram and copies them on duplicate', async () => {
+    const { auth } = await signUp();
+    const res = await api()
+      .post('/api/diagrams')
+      .set(auth)
+      .send({ type: 'flowchart', source: 'A -> B', prompts: [{ text: 'make a flow', createdAt: '2026-01-01T00:00:00.000Z' }] })
+      .expect(201);
+    expect(res.body.diagram.prompts).toEqual([{ text: 'make a flow', createdAt: '2026-01-01T00:00:00.000Z' }]);
+
+    const copy = await api().post(`/api/diagrams/${res.body.diagram._id}/duplicate`).set(auth).expect(201);
+    expect(copy.body.diagram.prompts).toHaveLength(1);
+  });
+});
