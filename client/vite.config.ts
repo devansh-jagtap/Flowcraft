@@ -1,4 +1,3 @@
-/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -15,5 +14,4 @@ export default defineConfig({
       output: { manualChunks: { flow: ['@xyflow/react', '@dagrejs/dagre'] } },
     },
   },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
 });
