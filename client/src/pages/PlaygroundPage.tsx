@@ -12,13 +12,13 @@ function initialDraft(templateId: string | null): DiagramDraft {
   const template = TEMPLATES.find((t) => t.id === templateId);
   if (template) {
     const { name, type, source, theme, direction } = template;
-    return { title: name, type, source, theme, direction, positions: {} };
+    return { title: name, type, source, theme, direction, positions: {}, prompts: [] };
   }
   const saved = guestDraft.load();
   if (saved) return saved;
 
-  const { name, type, source, theme, direction } = TEMPLATES[0];
-  return { title: name, type, source, theme, direction, positions: {} };
+  // A blank canvas: the AI panel invites the user to describe their diagram.
+  return { title: 'Untitled diagram', type: 'flowchart', source: '', theme: 'ocean', direction: 'TB', positions: {}, prompts: [] };
 }
 
 /** Try the editor without an account. Work is kept in localStorage until the user saves it. */

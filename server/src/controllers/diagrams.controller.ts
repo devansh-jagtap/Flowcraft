@@ -114,6 +114,7 @@ export async function duplicate(req: Request, res: Response) {
     theme: original.theme,
     direction: original.direction,
     positions: original.positions,
+    prompts: original.prompts,
   });
   res.status(201).json({ diagram: copy });
 }
