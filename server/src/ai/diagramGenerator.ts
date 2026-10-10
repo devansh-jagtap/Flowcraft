@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { env } from '../config/env.js';
 import { DIAGRAM_TYPES, DIRECTIONS, MAX_SOURCE_LENGTH, type DiagramType } from '../models/constants.js';
 import { HttpError } from '../lib/HttpError.js';
 import { checkSource } from './checkSource.js';
@@ -22,8 +23,17 @@ export interface GenerateRequest {
 
 type JsonGenerator = (options: GenerateJsonOptions) => Promise<unknown>;
 
-/** Strips characters models sometimes add, like tabs or Windows line endings. */
-const normalise = (source: string) => source.replace(/\r\n?/g, '\n').replace(/\t/g, '  ').trimEnd();
+/**
+ * Cleans up formatting quirks seen in real model output: Windows line endings, tabs,
+ * and line breaks returned as the two characters "\n" instead of real newlines.
+ */
+export function normalise(source: string): string {
+  let text = source.replace(/\r\n?/g, '\n');
+  const escaped = (text.match(/\\n/g) ?? []).length;
+  const real = (text.match(/\n/g) ?? []).length;
+  if (escaped > real) text = text.replace(/\\n/g, '\n');
+  return text.replace(/\t/g, '  ').trimEnd();
+}
 
 /**
  * Asks the model for a diagram, validates the shape of the answer and the syntax of
@@ -46,6 +56,10 @@ export async function generateDiagram(request: GenerateRequest, generate: JsonGe
 
     if (parsed.success && problems.length === 0) {
       return { ...parsed.data, source: normalise(parsed.data.source) };
+    }
+
+    if (!env.isTest && !env.isProduction) {
+      console.warn(`[ai] attempt ${attempt} rejected:\n- ${problems.join('\n- ')}\n${JSON.stringify(raw).slice(0, 1500)}`);
     }
 
     messages.push(
