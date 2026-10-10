@@ -19,6 +19,16 @@ describe('diagrams', () => {
     });
   });
 
+  it('accepts initial node positions (e.g. when saving a playground draft)', async () => {
+    const { auth } = await signUp();
+    const res = await api()
+      .post('/api/diagrams')
+      .set(auth)
+      .send({ type: 'flowchart', source: 'A -> B', positions: { a: { x: 1, y: 2 } } })
+      .expect(201);
+    expect(res.body.diagram.positions).toEqual({ a: { x: 1, y: 2 } });
+  });
+
   it('rejects unknown diagram types', async () => {
     const { auth } = await signUp();
     await api().post('/api/diagrams').set(auth).send({ type: 'piechart' }).expect(400);

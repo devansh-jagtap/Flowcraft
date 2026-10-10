@@ -22,6 +22,7 @@ export const createDiagramSchema = z.object({
   source: fields.source.optional(),
   theme: fields.theme.optional(),
   direction: fields.direction.optional(),
+  positions: fields.positions.optional(),
 });
 
 export const updateDiagramSchema = z
