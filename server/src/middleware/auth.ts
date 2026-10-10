@@ -63,6 +63,11 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   const token = bearerToken(req);
   if (!token) throw HttpError.unauthorized();
 
+  // Without a key every token fails to verify, which would otherwise look like an expired session.
+  if (!env.isTest && !env.clerk.secretKey && !env.clerk.jwtKey) {
+    throw new HttpError(503, "Sign-in isn't set up on the server. Add CLERK_SECRET_KEY to server/.env and restart the server.");
+  }
+
   const clerkId = await clerkIdFromToken(token);
   if (!clerkId) throw HttpError.unauthorized('Your session has expired, please log in again');
 

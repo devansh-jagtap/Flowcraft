@@ -1,4 +1,5 @@
 import type { DiagramDraft, GeneratedDiagram } from '../api/types';
+import type { DiagramType, ThemeName } from './diagram/types';
 
 const KEY = 'flowcraft.guestDraft';
 
@@ -39,7 +40,16 @@ export const pendingImport = {
   },
 };
 
-const THEME_FOR_TYPE = { flowchart: 'ocean', mindmap: 'grape', orgchart: 'forest' } as const;
+const THEME_FOR_TYPE: Record<DiagramType, ThemeName> = {
+  flowchart: 'ocean',
+  mindmap: 'grape',
+  orgchart: 'forest',
+  er: 'ocean',
+  class: 'grape',
+  usecase: 'forest',
+  sequence: 'ocean',
+  state: 'sunset',
+};
 
 /** Builds a new draft from an AI result, remembering the prompt that created it. */
 export function draftFromGenerated(diagram: GeneratedDiagram, prompt: string): DiagramDraft {

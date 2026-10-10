@@ -28,6 +28,35 @@
   border-top-color: #fdfdfd;
 }
 
+/* Skeletons stand in for content while it loads, shaped like what will arrive. */
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-2) 0%, color-mix(in srgb, var(--surface-2) 50%, var(--surface)) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-thumb {
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius);
+}
+
+.skeleton-line {
+  height: 12px;
+  margin-top: 10px;
+}
+
+.skeleton-line.short {
+  width: 55%;
+  margin-top: 8px;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -63,7 +92,7 @@
   position: fixed;
   bottom: 24px;
   left: 50%;
-  z-index: 100;
+  z-index: var(--z-toast);
   transform: translateX(-50%);
   display: grid;
   justify-items: center;
@@ -140,6 +169,13 @@
   font-size: 17px;
 }
 
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
 .section-label {
   margin: 26px 0 10px;
   font-size: 13px;
@@ -152,7 +188,7 @@
 
 .type-picker {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-bottom: 16px;
 }

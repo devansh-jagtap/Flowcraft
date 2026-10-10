@@ -2,7 +2,7 @@ import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import type { DiagramDraft, GeneratedDiagram } from '../../api/types';
 import { useAiEnabled } from '../../hooks/useAiEnabled';
 import { parseDiagram } from '../../lib/diagram/parse';
-import { TYPE_INFO } from '../../lib/diagram/templates';
+import { BLANK_SOURCE, TYPE_GROUPS, TYPE_INFO } from '../../lib/diagram/templates';
 import type { DiagramType, Direction } from '../../lib/diagram/types';
 import AiPanel from '../ai/AiPanel';
 import DiagramCanvas from '../diagram/DiagramCanvas';
@@ -17,10 +17,7 @@ interface Props {
   actions?: ReactNode;
 }
 
-const TYPE_OPTIONS = (Object.keys(TYPE_INFO) as DiagramType[]).map((t) => ({
-  value: t,
-  label: TYPE_INFO[t].label,
-}));
+const TYPES = Object.keys(TYPE_INFO) as DiagramType[];
 
 const DIRECTION_OPTIONS: { value: Direction; label: string; title: string }[] = [
   { value: 'TB', label: 'Vertical', title: 'Top to bottom' },
@@ -64,6 +61,13 @@ export default function Workspace({ draft, onChange, status, actions }: Props) {
   const graph = useMemo(() => parseDiagram(draft.type, source), [draft.type, source]);
   const hasManualLayout = Object.keys(draft.positions).length > 0;
 
+  function changeType(type: DiagramType) {
+    // An untouched starter text is swapped for the new type's starter; real work is kept.
+    const untouched = !draft.source.trim() || draft.source === BLANK_SOURCE[draft.type];
+    // Node ids mean different things in each type, so manual positions no longer apply.
+    onChange({ type, positions: {}, ...(untouched && { source: BLANK_SOURCE[type] }) });
+  }
+
   return (
     <div className="workspace">
       <div className="toolbar">
@@ -75,14 +79,18 @@ export default function Workspace({ draft, onChange, status, actions }: Props) {
           aria-label="Diagram title"
         />
         <div className="toolbar-group">
-          <Segmented
-            label="Diagram type"
-            value={draft.type}
-            options={TYPE_OPTIONS}
-            // Node ids mean different things in each type, so manual positions no longer apply.
-            onChange={(type) => onChange({ type, positions: {} })}
-          />
-          {draft.type === 'flowchart' && (
+          <select className="type-select" aria-label="Diagram type" value={draft.type} onChange={(e) => changeType(e.target.value as DiagramType)}>
+            {TYPE_GROUPS.map((group) => (
+              <optgroup key={group} label={group}>
+                {TYPES.filter((t) => TYPE_INFO[t].group === group).map((t) => (
+                  <option key={t} value={t}>
+                    {TYPE_INFO[t].label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {TYPE_INFO[draft.type].directional && (
             <Segmented label="Direction" value={draft.direction} options={DIRECTION_OPTIONS} onChange={(direction) => onChange({ direction, positions: {} })} />
           )}
           <ThemePicker value={draft.theme} onChange={(theme) => onChange({ theme })} />

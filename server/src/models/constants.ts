@@ -1,4 +1,4 @@
-export const DIAGRAM_TYPES = ['flowchart', 'mindmap', 'orgchart'] as const;
+export const DIAGRAM_TYPES = ['flowchart', 'mindmap', 'orgchart', 'er', 'class', 'usecase', 'sequence', 'state'] as const;
 export const DIAGRAM_THEMES = ['ocean', 'sunset', 'forest', 'grape', 'mono'] as const;
 export const DIRECTIONS = ['LR', 'TB'] as const;
 

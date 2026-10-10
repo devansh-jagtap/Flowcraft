@@ -63,6 +63,35 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   );
 }
 
+/** A macOS-style confirmation sheet for actions that can't be undone. */
+export function ConfirmDialog({
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onClose,
+}: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal title={title} onClose={onClose}>
+      <p className="muted">{message}</p>
+      <div className="dialog-actions">
+        <button className="btn btn-secondary" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="btn btn-danger" onClick={onConfirm} autoFocus>
+          {confirmLabel}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 export function Segmented<T extends string>({
   value,
   options,

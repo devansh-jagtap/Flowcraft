@@ -104,7 +104,7 @@ describe('diagrams', () => {
 
     const res = await api().get('/api/diagrams/stats').set(alice.auth).expect(200);
     expect(res.body).toEqual({
-      byType: { flowchart: 1, mindmap: 1, orgchart: 0 },
+      byType: { flowchart: 1, mindmap: 1, orgchart: 0, er: 0, class: 0, usecase: 0, sequence: 0, state: 0 },
       diagrams: 2,
       shared: 0,
       views: 0,

@@ -84,13 +84,105 @@ export function checkSource(type: DiagramType, source: string): string[] {
         );
       }
     }
-  } else {
+  } else if (type === 'mindmap' || type === 'orgchart') {
     const indent = (l: string) => l.match(/^\s*/)![0].length;
     if (indent(lines[0]) !== 0) problems.push('The first line (the root) must not be indented.');
     const roots = lines.filter((l) => indent(l) === 0);
     if (roots.length > 1) problems.push(`There must be exactly one root line, found ${roots.length}: indent the others under it.`);
     if (lines.some((l) => ARROW.test(l))) problems.push('Mind maps and org charts use indentation, not "->" arrows.');
+  } else {
+    problems.push(...UML_CHECKS[type](lines));
   }
 
   return problems.slice(0, 5);
 }
+
+const indentOf = (l: string) => l.match(/^\s*/)![0].length;
+
+const ER_TAGS = /\((key|pk|primary key|partial key|partial|multivalued|multi-valued|multi|derived|entity|weak|weak entity|relationship|identifying|identifying relationship|weak relationship)\)\s*$/i;
+const ER_CONNECTOR = /\s(--|==)\s/;
+
+function checkEr(lines: string[]): string[] {
+  const problems: string[] = [];
+  if (indentOf(lines[0]) !== 0) problems.push('The first line must be an unindented entity name.');
+  const chains = lines.filter((l) => indentOf(l) === 0 && ER_CONNECTOR.test(l));
+  if (chains.length === 0) problems.push('An ER diagram needs relationship lines like "Student -- Enrolls -- Course: M:N".');
+  lines.forEach((line, i) => {
+    const text = line.trim();
+    if (indentOf(line) > 0 && ER_CONNECTOR.test(text)) problems.push(`Line ${i + 1}: relationship lines must not be indented.`);
+    if (/->/.test(text)) problems.push(`Line ${i + 1}: use "--" (or "==" for total participation) instead of "->" arrows.`);
+    if (/\([^()]+\)\s*$/.test(text) && !ER_TAGS.test(text)) {
+      problems.push(`Line ${i + 1}: unknown tag in "${text}". Use (key), (partial key), (multivalued), (derived), (weak) or (relationship).`);
+    }
+    const cardinality = text.match(/:\s+(.+)$/);
+    if (ER_CONNECTOR.test(text) && cardinality) {
+      const edges = text.replace(/:\s+.+$/, '').split(ER_CONNECTOR).filter((_, k) => k % 2 === 0).length - 1;
+      const values = cardinality[1].split(/\s*:\s*|\s+to\s+/i).length;
+      if (values !== edges) problems.push(`Line ${i + 1}: write one cardinality per connection, e.g. "A -- R -- B: 1:N".`);
+    }
+  });
+  return problems;
+}
+
+const CLASS_OPERATOR = /\s(<\|--|--\|>|<\|\.\.|\.\.\|>|\*--|--\*|o--|--o|-->|<--|\.\.>|<\.\.|--|\.\.)\s/;
+
+function checkClass(lines: string[]): string[] {
+  const problems: string[] = [];
+  let inBraces = false;
+  lines.forEach((line, i) => {
+    const text = line.trim();
+    if (text.endsWith('{')) inBraces = true;
+    if (text === '}') inBraces = false;
+    if (inBraces || indentOf(line) > 0) return;
+    if (/(^|[^-.])->/.test(text)) problems.push(`Line ${i + 1}: use "-->" for associations, "--|>" for inheritance, not "->".`);
+    else if (/(--|\.\.)/.test(text) && !CLASS_OPERATOR.test(text)) problems.push(`Line ${i + 1}: put a space on both sides of the arrow.`);
+  });
+  if (!lines.some((l) => indentOf(l) === 0 && CLASS_OPERATOR.test(l)) && lines.filter((l) => indentOf(l) === 0).length > 1) {
+    problems.push('Connect the classes with relationship lines like "Admin --|> User".');
+  }
+  return problems;
+}
+
+function checkUseCase(lines: string[]): string[] {
+  if (!lines.some((l) => /\s(->|-->|--|--\|>)\s/.test(l))) return ['Connect actors to use cases with lines like "Customer -> Place order".'];
+  return [];
+}
+
+const SEQUENCE_LINE =
+  /^(participant|actor|database)\s|^(loop|alt|opt|par|break|critical|else|and)\b|^end$|^(sequenceDiagram|autonumber|activate|deactivate|title)\b|(-->>|-->|->>|->|-\))/i;
+
+function checkSequence(lines: string[]): string[] {
+  const problems: string[] = [];
+  let open = 0;
+  lines.forEach((line, i) => {
+    const text = line.trim();
+    if (/^(loop|alt|opt|par|break|critical)\b/i.test(text)) open += 1;
+    else if (/^end$/i.test(text)) open -= 1;
+    if (open < 0) {
+      problems.push(`Line ${i + 1}: "end" without a matching loop, alt or opt.`);
+      open = 0;
+    }
+    if (/^note\b/i.test(text)) problems.push(`Line ${i + 1}: notes are not supported; put the text in a message label.`);
+    else if (!SEQUENCE_LINE.test(text)) problems.push(`Line ${i + 1}: "${text}" is not a message. Write "A -> B: text".`);
+  });
+  if (open > 0) problems.push('Every loop, alt or opt block needs a closing "end" line.');
+  if (!lines.some((l) => /(-->>|-->|->>|->|-\))/.test(l))) problems.push('A sequence diagram needs messages like "User -> App: Log in".');
+  return problems;
+}
+
+function checkState(lines: string[]): string[] {
+  const problems: string[] = [];
+  if (!lines.some((l) => /^\s*\[\*\]\s*->/.test(l))) problems.push('Start with the initial state: "[*] -> First state".');
+  lines.forEach((line, i) => {
+    if (!ARROW.test(line)) problems.push(`Line ${i + 1} "${line.trim()}" has no arrow. Every line must be "A -> B: event".`);
+  });
+  return problems;
+}
+
+const UML_CHECKS: Record<Exclude<DiagramType, 'flowchart' | 'mindmap' | 'orgchart'>, (lines: string[]) => string[]> = {
+  er: checkEr,
+  class: checkClass,
+  usecase: checkUseCase,
+  sequence: checkSequence,
+  state: checkState,
+};

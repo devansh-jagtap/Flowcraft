@@ -1,6 +1,7 @@
 /*
- * Design tokens. The look follows macOS: the system font, one accent (system blue),
- * grey neutrals, hairline separators and one radius scale:
+ * Design tokens. The look follows macOS: San Francisco on Apple devices (self-hosted
+ * Geist elsewhere), one accent (system blue), grey neutrals, hairline separators and
+ * one radius scale:
  *   --radius-sm  controls (buttons, inputs, segmented controls)
  *   --radius     surfaces (cards, windows, dialogs, thumbnails)
  *   --radius-lg  device chrome (the MacBook on the landing page)
@@ -31,37 +32,41 @@
   --shadow-lg: 0 0 0 0.5px rgba(29, 29, 31, 0.12), 0 24px 64px rgba(29, 29, 31, 0.16);
   --control-shadow: 0 0 0 0.5px rgba(29, 29, 31, 0.08), 0 1px 2px rgba(29, 29, 31, 0.14);
 
-  --nav-height: 52px;
+  --nav-height: 56px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI Variable Text', 'Segoe UI', sans-serif;
-  --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', 'Segoe UI Variable Display', 'Segoe UI', sans-serif;
-  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  /* The only stacking layers in the app. */
+  --z-raised: 2;
+  --z-nav: 20;
+  --z-toast: 100;
+
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Geist Variable', 'Segoe UI', sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Geist Variable', 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Geist Mono Variable', Menlo, Consolas, monospace;
 
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #151517;
-    --surface: #1e1e21;
-    --surface-2: #2e2e32;
-    --sidebar: #232327;
-    --border: rgba(245, 245, 247, 0.1);
-    --border-strong: rgba(245, 245, 247, 0.16);
-    --text: #f5f5f7;
-    --muted: #a1a1a6;
-    --faint: #8e8e93;
-    --primary: #0a84ff;
-    --primary-hover: #409cff;
-    --primary-soft: rgba(10, 132, 255, 0.2);
-    --focus-ring: 0 0 0 3.5px rgba(10, 132, 255, 0.5);
-    --danger: #ff453a;
-    --success: #32d74b;
-    --shadow-sm: 0 0 0 0.5px rgba(245, 245, 247, 0.1), 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow: 0 0 0 0.5px rgba(245, 245, 247, 0.1), 0 6px 18px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 0 0 0.5px rgba(245, 245, 247, 0.12), 0 24px 64px rgba(0, 0, 0, 0.6);
-    --control-shadow: 0 0 0 0.5px rgba(245, 245, 247, 0.12), 0 1px 2px rgba(0, 0, 0, 0.4);
-    color-scheme: dark;
-  }
+/* Dark appearance. <html data-theme> is set by index.html and src/lib/theme.ts. */
+:root[data-theme='dark'] {
+  --bg: #151517;
+  --surface: #1e1e21;
+  --surface-2: #2e2e32;
+  --sidebar: #232327;
+  --border: rgba(245, 245, 247, 0.1);
+  --border-strong: rgba(245, 245, 247, 0.16);
+  --text: #f5f5f7;
+  --muted: #a1a1a6;
+  --faint: #8e8e93;
+  --primary: #0a84ff;
+  --primary-hover: #409cff;
+  --primary-soft: rgba(10, 132, 255, 0.2);
+  --focus-ring: 0 0 0 3.5px rgba(10, 132, 255, 0.5);
+  --danger: #ff453a;
+  --success: #32d74b;
+  --shadow-sm: 0 0 0 0.5px rgba(245, 245, 247, 0.1), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 0 0 0.5px rgba(245, 245, 247, 0.1), 0 6px 18px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 0 0 0.5px rgba(245, 245, 247, 0.12), 0 24px 64px rgba(0, 0, 0, 0.6);
+  --control-shadow: 0 0 0 0.5px rgba(245, 245, 247, 0.12), 0 1px 2px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }

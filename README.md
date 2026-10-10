@@ -2,7 +2,7 @@
 
 Describe something in plain words and get a diagram back.
 
-Flowcraft turns a sentence like *"How does online food delivery work?"* into a clean flowchart, mind map or org chart. You can then refine it by chatting (*"add a step for refunds"*), drag boxes around, change colours, share a read-only link or download a PNG or SVG.
+Flowcraft turns a sentence like *"How does online food delivery work?"* into a clean flowchart, mind map, org chart, ER diagram or UML diagram (class, use case, sequence, state). You can then refine it by chatting (*"add a step for refunds"*), drag boxes around, change colours, share a read-only link or download a PNG or SVG.
 
 It is made for everyday people: students mapping a subject, small teams writing down a process, families sketching a family tree. Prompts work in any language Gemini supports.
 
@@ -51,6 +51,18 @@ Every diagram is plain text. The AI writes the same text, so you can always open
 | Mind map | an indented outline | the first line is the centre |
 | Org chart | an indented list | indent means "reports to" |
 | | `Priya: Backend` | the text after `: ` becomes a second line on the card |
+| ER diagram (Chen) | `Student`, then indented `Roll no (key)` | an entity and its attributes; indent again for a composite attribute |
+| | `(key)` `(partial key)` `(multivalued)` `(derived)` | underlined, dashed-underlined, double or dashed ovals |
+| | `Dependent (weak)` | a weak entity (double border) |
+| | `Student -- Enrolls -- Course: M:N` | a relationship diamond with cardinalities; `==` draws total participation |
+| UML class | `class User`, then indented `- id: int`, `+ login(): bool` | a class with attributes and methods (also `interface`, `abstract class`, `enum`) |
+| | `A --\|> B`, `A ..\|> B`, `A *-- B`, `A o-- B`, `A --> B`, `A ..> B` | inheritance, realisation, composition, aggregation, association, dependency |
+| | `Customer "1" -- "*" Order: places` | multiplicities and a label |
+| UML use case | `system Shop`, `actor Bank`, `Customer -> Pay` | system boundary, actors and use cases |
+| | `Pay -> Log in: include` | `«include»` (or `extend`) |
+| UML sequence | `actor User`, `database DB`, `User -> App: Log in` | lifelines and calls; `-->` reply, `-)` async |
+| | `alt ok` … `else` … `end` | combined fragments (also `loop`, `opt`, `par`) |
+| UML state | `[*] -> Idle`, `Idle -> Busy: start`, `Busy -> [*]` | initial and final states, transitions |
 
 Lines starting with `#` are comments.
 
@@ -77,7 +89,7 @@ Lines starting with `#` are comments.
 - Public read-only links with a view counter. Viewers can make their own copy.
 - Export the whole diagram as PNG or SVG.
 - A playground that works without an account. The draft is imported after signing up.
-- Seven starter templates.
+- Twelve starter templates, including an ER diagram and UML class, use case, sequence and state diagrams.
 
 <br />
 
@@ -88,8 +100,14 @@ flowcraft/
 ├── client/                React + TypeScript + Vite
 │   └── src/
 │       ├── pages/         one file per route: Landing, Dashboard, Editor, Playground, Shared, Auth
-│       ├── components/    Workspace (the editor), AI panel, dialogs, navbar, MacBook, shared UI
-│       │   └── diagram/   React Flow canvas, node shapes, static thumbnails, PNG/SVG export
+│       ├── components/
+│       │   ├── layout/    navbar, Clerk router bridge, protected routes
+│       │   ├── landing/   the CSS MacBook that hosts the live demo
+│       │   ├── library/   "My diagrams": sidebar, diagram cards, new-diagram dialog
+│       │   ├── editor/    Workspace (toolbar + sidebar + canvas), text editor, themes, sharing
+│       │   ├── ai/        prompt box and the chat-style AI panel
+│       │   ├── diagram/   React Flow canvas, node shapes, static thumbnails, PNG/SVG export
+│       │   └── ui.tsx     small shared pieces: spinner, empty/error states, dialogs, segmented control
 │       ├── lib/diagram/   text parser, layout, themes, templates (with unit tests)
 │       ├── api/           typed fetch client for the REST API
 │       ├── context/       auth (Clerk) and toasts

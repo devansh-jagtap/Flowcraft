@@ -9,18 +9,53 @@ import {
   useNodesState,
   useReactFlow,
   type Edge,
+  type EdgeTypes,
   type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '../../context/ToastContext';
-import { layoutGraph, withOverrides } from '../../lib/diagram/layout';
+import { isContainer, layoutDiagram } from '../../lib/diagram/layout';
+import { messageY, SEQUENCE } from '../../lib/diagram/layoutSequence';
 import { THEMES } from '../../lib/diagram/themes';
-import type { DiagramType, Direction, Graph, Point, ThemeName } from '../../lib/diagram/types';
+import type { DiagramType, Direction, Graph, GraphEdge, NodeShape, Point, ThemeName } from '../../lib/diagram/types';
+import { FloatingEdge, MessageEdge, type DiagramEdgeData } from './edges';
 import { exportDiagram, type ExportFormat } from './exportImage';
 import { ShapeNode, type ShapeFlowNode } from './ShapeNode';
+import { ClassNode, ContainerNode, ParticipantNode } from './UmlNodes';
 
-const nodeTypes: NodeTypes = { shape: ShapeNode };
+const nodeTypes: NodeTypes = { shape: ShapeNode, classBox: ClassNode, participant: ParticipantNode, container: ContainerNode };
+const edgeTypes: EdgeTypes = { floating: FloatingEdge, message: MessageEdge };
+
+const NODE_TYPE: Partial<Record<NodeShape, string>> = {
+  class: 'classBox',
+  participant: 'participant',
+  boundary: 'container',
+  fragment: 'container',
+};
+
+/** ER and UML diagrams draw straight connections between outlines, with notation at the ends. */
+const FLOATING: DiagramType[] = ['er', 'class', 'usecase', 'state'];
+
+/** Connections between the same two nodes bend apart so they don't sit on top of each other. */
+function curves(edges: GraphEdge[]): Map<string, number> {
+  const groups = new Map<string, GraphEdge[]>();
+  for (const edge of edges) {
+    if (edge.source === edge.target) continue;
+    const key = [edge.source, edge.target].sort().join('|');
+    groups.set(key, [...(groups.get(key) ?? []), edge]);
+  }
+  const result = new Map<string, number>();
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    group.forEach((edge, i) => {
+      const offset = (i - (group.length - 1) / 2) * 34;
+      // The bend is relative to the edge's own direction, so flip it for reversed edges.
+      result.set(edge.id, edge.source < edge.target ? offset : -offset);
+    });
+  }
+  return result;
+}
 
 // Must be a stable reference: a fresh `{}` default on every render would re-run the
 // layout memo, reset React Flow's nodes and loop forever.
@@ -51,24 +86,53 @@ function Canvas({ graph, type, direction, theme: themeName, positions = NO_POSIT
 
   // Layout depends only on structure + direction; text edits that keep the structure are cheap.
   const layoutNodes = useMemo<ShapeFlowNode[]>(() => {
-    const boxes = withOverrides(layoutGraph(graph, type, direction), positions);
-    return graph.nodes.map((node) => {
-      const box = boxes.get(node.id)!;
+    const boxes = layoutDiagram(graph, type, direction, positions);
+    return graph.nodes.flatMap((node) => {
+      const box = boxes.get(node.id);
+      if (!box) return [];
+      // Frames follow their contents and sequence lifelines keep their order, so neither moves by hand.
+      const fixed = isContainer(node) || node.shape === 'participant';
+      const dividers = node.branches?.map((b) => ({ y: messageY(b.row) - SEQUENCE.frameLift - box.y, label: b.label }));
       return {
         id: node.id,
-        type: 'shape',
+        type: NODE_TYPE[node.shape] ?? 'shape',
         position: { x: box.x, y: box.y },
         width: box.width,
         height: box.height,
-        draggable: editable,
-        data: { node, theme, diagramType: type, direction },
+        draggable: editable && !fixed,
+        selectable: !fixed,
+        className: fixed ? 'is-fixed' : undefined,
+        zIndex: isContainer(node) ? -1 : undefined,
+        data: { node, theme, diagramType: type, direction, dividers },
       };
     });
   }, [graph, type, direction, positions, theme, editable]);
 
-  const edges = useMemo<Edge[]>(
-    () =>
-      graph.edges.map((edge) => ({
+  const edges = useMemo<Edge[]>(() => {
+    if (type === 'sequence' || FLOATING.includes(type)) {
+      const bends = curves(graph.edges);
+      return graph.edges.map(
+        (edge): Edge<DiagramEdgeData> => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          type: type === 'sequence' ? 'message' : 'floating',
+          data: {
+            kind: edge.kind ?? 'arrow',
+            label: edge.label,
+            sourceLabel: edge.sourceLabel,
+            targetLabel: edge.targetLabel,
+            total: edge.total,
+            curve: bends.get(edge.id),
+            row: edge.row,
+            color: theme.edge,
+            text: theme.step.fg,
+            canvas: theme.canvas,
+          },
+        })
+      );
+    }
+    return graph.edges.map((edge) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
@@ -80,9 +144,8 @@ function Canvas({ graph, type, direction, theme: themeName, positions = NO_POSIT
         labelBgStyle: { fill: theme.canvas },
         labelBgPadding: [6, 3] as [number, number],
         labelBgBorderRadius: 6,
-      })),
-    [graph.edges, type, theme]
-  );
+      }));
+  }, [graph.edges, type, theme]);
 
   // Local node state lets React Flow animate drags smoothly; it resyncs whenever the layout changes.
   const [nodes, setNodes, onNodesChange] = useNodesState<ShapeFlowNode>(layoutNodes);
@@ -112,6 +175,7 @@ function Canvas({ graph, type, direction, theme: themeName, positions = NO_POSIT
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       onNodesChange={onNodesChange}
       onNodeDragStop={(_, node) => onNodeMoveRef.current?.(node.id, { x: Math.round(node.position.x), y: Math.round(node.position.y) })}
       nodesConnectable={false}

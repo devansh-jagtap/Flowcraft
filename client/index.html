@@ -5,7 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Flowcraft turns plain text into beautiful flowcharts, mind maps and org charts." />
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#151517" media="(prefers-color-scheme: dark)" />
+    <meta property="og:title" content="Flowcraft" />
+    <meta property="og:description" content="Describe it. Get a diagram. Flowcraft turns plain text into flowcharts, mind maps and org charts." />
+    <meta property="og:type" content="website" />
     <title>Flowcraft</title>
+    <script>
+      // Apply the saved appearance before first paint. src/lib/theme.ts keeps it in sync afterwards.
+      try {
+        var saved = localStorage.getItem('flowcraft-theme');
+        var dark = saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,6 +1,6 @@
-import type { ThemeName } from './types';
+import type { GraphNode, ThemeName } from './types';
 
-interface Swatch {
+export interface Swatch {
   bg: string;
   fg: string;
   border: string;
@@ -76,3 +76,27 @@ export const THEMES: Record<ThemeName, Theme> = {
 export const THEME_NAMES = Object.keys(THEMES) as ThemeName[];
 
 export const levelSwatch = (theme: Theme, depth: number) => theme.levels[Math.min(depth, theme.levels.length - 1)];
+
+/** Fill, text and border colours for a node, by shape. */
+export function swatchFor(theme: Theme, node: GraphNode): Swatch {
+  switch (node.shape) {
+    case 'terminal':
+    case 'entity':
+    case 'initial':
+    case 'final':
+    case 'participant':
+      return theme.terminal;
+    case 'decision':
+    case 'relationship':
+    case 'usecase':
+      return theme.decision;
+    case 'topic':
+      return levelSwatch(theme, node.depth);
+    case 'actor':
+    case 'boundary':
+    case 'fragment':
+      return { bg: 'transparent', fg: theme.step.fg, border: theme.edge };
+    default:
+      return theme.step;
+  }
+}

@@ -1,5 +1,6 @@
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/react';
 import { Link, NavLink } from 'react-router-dom';
+import AppearanceMenu from './AppearanceMenu';
 
 function Logo() {
   return (
@@ -16,8 +17,9 @@ export default function Navbar() {
         <Logo />
         <nav className="navbar-links">
           <NavLink to="/try" className="nav-link hide-sm">
-            Create
+            Open editor
           </NavLink>
+          <AppearanceMenu />
           <Show when="signed-in">
             <NavLink to="/app" className="nav-link">
               My diagrams

@@ -80,6 +80,15 @@ select:focus {
   background: color-mix(in srgb, var(--surface) 93%, var(--text));
 }
 
+.btn-danger {
+  background: var(--danger);
+  color: #fdfdfd;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 88%, var(--text));
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--muted);
@@ -88,6 +97,12 @@ select:focus {
 .btn-ghost:hover:not(:disabled) {
   background: color-mix(in srgb, var(--text) 7%, transparent);
   color: var(--text);
+}
+
+.btn-lg {
+  height: 44px;
+  padding: 0 24px;
+  font-size: 15px;
 }
 
 .btn-sm {

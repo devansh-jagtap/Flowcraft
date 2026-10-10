@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { diagramsApi } from '../api/diagrams';
 import type { GeneratedDiagram } from '../api/types';
+import PromptBox from '../components/ai/PromptBox';
 import DiagramCanvas from '../components/diagram/DiagramCanvas';
 import { DiagramThumbnail } from '../components/diagram/DiagramThumbnail';
 import MacBook from '../components/landing/MacBook';
-import PromptBox from '../components/ai/PromptBox';
 import { Segmented } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { draftFromGenerated, guestDraft } from '../lib/draft';
@@ -13,14 +13,17 @@ import { parseDiagram } from '../lib/diagram/parse';
 import { TEMPLATES, TYPE_INFO } from '../lib/diagram/templates';
 import type { DiagramType, ThemeName } from '../lib/diagram/types';
 
-const DEMOS: Record<DiagramType, { source: string; theme: ThemeName }> = {
+/** The diagram types the MacBook demo can switch between. */
+type DemoType = Extract<DiagramType, 'flowchart' | 'mindmap' | 'orgchart' | 'er'>;
+
+const DEMOS: Record<DemoType, { source: string; theme: ThemeName }> = {
   flowchart: {
     theme: 'ocean',
     source: `Hungry? -> Cook at home: yes
 Hungry? -> (Keep working): no
-Cook at home -> Ingredients in fridge?
-Ingredients in fridge? -> (Make pasta): yes
-Ingredients in fridge? -> Order food: no`,
+Cook at home -> Fridge full?
+Fridge full? -> (Make pasta): yes
+Fridge full? -> Order food: no`,
   },
   mindmap: {
     theme: 'forest',
@@ -41,23 +44,37 @@ Ingredients in fridge? -> Order food: no`,
   Diya: Doctor
     Kiara: Baby`,
   },
+  er: {
+    theme: 'ocean',
+    source: `Student
+  Roll no (key)
+  Name
+  Phone (multivalued)
+Course
+  Course id (key)
+  Title
+Student -- Takes -- Course: M:N`,
+  },
 };
 
+const DEMO_OPTIONS = (Object.keys(DEMOS) as DemoType[]).map((t) => ({ value: t, label: TYPE_INFO[t].label }));
+
+/** Bento order: the first tile is the large one (see .bento in styles/landing.css). */
+const SHOWCASE: DiagramType[] = ['flowchart', 'mindmap', 'er', 'class', 'orgchart', 'usecase', 'sequence', 'state'];
+
 const STEPS = [
-  ['Describe it', 'Write what you want in plain words: a process, an idea, a team. Any language works.'],
-  ['Flowcraft draws it', 'It picks the right diagram type and lays it out neatly in a few seconds.'],
-  ['Refine it', 'Ask for changes like “add a refund step”, drag boxes, change colours or edit the text.'],
+  ['Describe it', 'Write what you want in plain words: a process, an idea, a database. Any language works.'],
+  ['Flowcraft draws it', 'It picks the right diagram type and lays everything out neatly in a few seconds.'],
+  ['Refine it', 'Ask for changes like “add a refund step”, drag boxes, switch colours or edit the text.'],
   ['Share it', 'Download a PNG or SVG, or send a link anyone can open.'],
 ];
-
-const TYPE_OPTIONS = (Object.keys(TYPE_INFO) as DiagramType[]).map((t) => ({ value: t, label: TYPE_INFO[t].label }));
 
 export default function LandingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [type, setType] = useState<DiagramType>('flowchart');
+  const [type, setType] = useState<DemoType>('flowchart');
   const [source, setSource] = useState(DEMOS.flowchart.source);
-  // The canvas measures itself on mount, so wait until the MacBook has finished opening.
+  // The canvas measures itself on mount, so it waits until the MacBook has opened.
   const [opened, setOpened] = useState(false);
   const graph = useMemo(() => parseDiagram(type, source), [type, source]);
 
@@ -76,20 +93,19 @@ export default function LandingPage() {
   return (
     <div className="landing">
       <section className="hero container">
-        <div className="hero-copy">
-          <h1>
-            Describe it.
-            <br />
-            Get a diagram.
-          </h1>
-          <p className="lead">Write what you want to explain. Flowcraft draws a flowchart, mind map or org chart you can edit and share.</p>
+        <h1 className="hero-title">
+          Describe it.
+          <br />
+          Get a diagram.
+        </h1>
+        <div className="hero-side">
+          <p className="lead">Write what you want to explain. Flowcraft draws flowcharts, mind maps, ER and UML diagrams you can edit and share.</p>
           <PromptBox onGenerated={openGenerated} autoFocus />
-          <p className="muted small hero-alt">
-            No account needed. <Link to="/try?template=morning-routine">Start from a template</Link> instead.
-          </p>
         </div>
+      </section>
 
-        <div className="hero-device">
+      <section className="stage" aria-label="Live demo">
+        <div className="stage-device">
           <MacBook
             onOpen={() => setOpened(true)}
             title="Untitled diagram"
@@ -97,7 +113,7 @@ export default function LandingPage() {
               <Segmented
                 label="Diagram type"
                 value={type}
-                options={TYPE_OPTIONS}
+                options={DEMO_OPTIONS}
                 onChange={(t) => {
                   setType(t);
                   setSource(DEMOS[t].source);
@@ -108,39 +124,56 @@ export default function LandingPage() {
             <textarea value={source} onChange={(e) => setSource(e.target.value)} spellCheck={false} aria-label="Demo diagram text" />
             <div className="mac-canvas">{opened && <DiagramCanvas graph={graph} type={type} direction="TB" theme={DEMOS[type].theme} />}</div>
           </MacBook>
-          <p className="muted small device-caption">Every diagram is plain text underneath. Edit the text on the left and the diagram follows.</p>
+        </div>
+      </section>
+
+      <section className="types container">
+        <h2 className="section-title">Eight kinds of diagram. One way to write them.</h2>
+        <p className="section-lead">Flowcharts and mind maps for ideas, ER and UML diagrams for software. Pick one, or let the AI choose.</p>
+        <div className="bento">
+          {SHOWCASE.map((t) => {
+            const template = TEMPLATES.find((tpl) => tpl.type === t);
+            if (!template) return null;
+            return (
+              <Link key={t} to={`/try?template=${template.id}`} className={`bento-tile tile-${t}`}>
+                <div className="bento-visual">
+                  <DiagramThumbnail type={template.type} source={template.source} theme={template.theme} direction={template.direction} />
+                </div>
+                <div className="bento-text">
+                  <h3>{TYPE_INFO[t].label}</h3>
+                  <p>{TYPE_INFO[t].hint}</p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
       <section className="how container">
-        <h2 className="section-title">From a sentence to a diagram</h2>
+        <h2 className="section-title how-title">From a sentence to a diagram</h2>
         <ol className="steps">
           {STEPS.map(([title, text]) => (
             <li key={title}>
               <h3>{title}</h3>
-              <p className="muted">{text}</p>
+              <p>{text}</p>
             </li>
           ))}
         </ol>
       </section>
 
-      <section className="templates-section">
-        <div className="container">
-          <h2 className="section-title">Start from a template</h2>
-        </div>
-        <div className="gallery">
-          {TEMPLATES.map((t) => (
-            <Link key={t.id} to={`/try?template=${t.id}`} className="template-card">
-              <DiagramThumbnail type={t.type} source={t.source} theme={t.theme} direction={t.direction} />
-              <strong>{t.name}</strong>
-              <span className="muted small">{t.description}</span>
-            </Link>
-          ))}
-        </div>
+      <section className="closing container">
+        <h2>Your next diagram is one sentence away.</h2>
+        <Link to="/try" className="btn btn-primary btn-lg">
+          Open editor
+        </Link>
       </section>
 
       <footer className="footer">
-        <div className="container muted small">Flowcraft is built with MongoDB, Express, React, Node.js and Google Gemini.</div>
+        <div className="container footer-inner">
+          <span className="logo">Flowcraft</span>
+          <p>Built with MongoDB, Express, React, Node.js and Google Gemini.</p>
+          <a href="https://github.com/devansh-jagtap/silver-octo-guacamole">Source on GitHub</a>
+        </div>
       </footer>
     </div>
   );

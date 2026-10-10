@@ -16,8 +16,11 @@ const SharedPage = lazy(() => import('./pages/SharedPage'));
 function Layout({ fullHeight = false }: { fullHeight?: boolean }) {
   return (
     <div className={`app${fullHeight ? ' app-full' : ''}`}>
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
       <Navbar />
-      <main>
+      <main id="main">
         <Suspense fallback={<Spinner fullPage />}>
           <Outlet />
         </Suspense>

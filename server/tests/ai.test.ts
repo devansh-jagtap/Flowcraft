@@ -50,6 +50,27 @@ describe('checkSource', () => {
     expect(checkSource('mindmap', 'Root\nOther root\n  Child')[0]).toMatch(/exactly one root/);
     expect(checkSource('orgchart', '  Indented root\n    Child')[0]).toMatch(/must not be indented/);
   });
+
+  it('accepts valid ER and UML diagrams', () => {
+    expect(checkSource('er', 'Student\n  Roll no (key)\nCourse\n  Id (key)\nStudent == Enrolls -- Course: M:N')).toEqual([]);
+    expect(checkSource('class', 'class User\n  - id: int\n  + login(): bool\nAdmin --|> User\nCustomer "1" -- "*" Order: places')).toEqual([]);
+    expect(checkSource('class', 'class User {\n+login() bool\n}\nAdmin --|> User')).toEqual([]);
+    expect(checkSource('usecase', 'system Shop\nCustomer -> Place order\nPlace order -> Pay: include')).toEqual([]);
+    expect(checkSource('sequence', 'actor User\nUser -> App: Log in\nalt ok\n  App --> User: Home\nelse fail\n  App --> User: Error\nend')).toEqual([]);
+    expect(checkSource('state', '[*] -> Idle\nIdle -> Busy: start\nBusy -> [*]')).toEqual([]);
+  });
+
+  it('reports common ER and UML mistakes', () => {
+    expect(checkSource('er', 'Student\n  Name (primary)')).toEqual(
+      expect.arrayContaining([expect.stringMatching(/needs relationship lines/), expect.stringMatching(/unknown tag/)])
+    );
+    expect(checkSource('er', 'A\nB\nA -- R -- B: 1')[0]).toMatch(/one cardinality per connection/);
+    expect(checkSource('class', 'class A\nB -> A')[0]).toMatch(/not "->"/);
+    expect(checkSource('class', 'class A\nB--|>A')[0]).toMatch(/space on both sides/);
+    expect(checkSource('sequence', 'A -> B: hi\nloop forever\n  B -> A: hi')).toEqual(['Every loop, alt or opt block needs a closing "end" line.']);
+    expect(checkSource('sequence', 'A -> B: hi\nnote over A: x')[0]).toMatch(/notes are not supported/);
+    expect(checkSource('state', 'Idle -> Busy\nBusy -> Idle')[0]).toMatch(/initial state/);
+  });
 });
 
 describe('normalise', () => {

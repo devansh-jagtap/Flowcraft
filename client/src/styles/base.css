@@ -12,6 +12,12 @@ body,
   height: 100%;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--font);
@@ -31,10 +37,12 @@ h3 {
   line-height: 1.15;
   letter-spacing: -0.015em;
   margin: 0 0 0.4em;
+  text-wrap: balance;
 }
 
 p {
   margin: 0 0 0.6em;
+  text-wrap: pretty;
 }
 
 a {
@@ -61,6 +69,26 @@ code {
 
 ::selection {
   background: var(--primary-soft);
+}
+
+/* Keyboard users can jump past the navigation. Hidden until focused. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: var(--z-toast);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: #fdfdfd;
+  font-size: 13px;
+  font-weight: 500;
+  transform: translateY(-160%);
+  transition: transform 0.2s var(--ease);
+}
+
+.skip-link:focus {
+  transform: none;
 }
 
 /* ---------- Utilities ---------- */
@@ -127,7 +155,7 @@ code {
 .navbar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: var(--z-nav);
   height: var(--nav-height);
   flex-shrink: 0;
   background: color-mix(in srgb, var(--bg) 78%, transparent);
@@ -188,6 +216,74 @@ button.nav-link {
 
 .nav-link.active {
   background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+/* ---------- Appearance menu (macOS-style pull-down) ---------- */
+.appearance {
+  position: relative;
+}
+
+.appearance-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 168px;
+  padding: 5px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: var(--shadow-lg);
+  animation: menu-in 0.16s var(--ease);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.appearance-heading {
+  margin: 2px 0 4px;
+  padding: 0 10px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.appearance-menu button {
+  position: relative;
+  width: 100%;
+  height: 26px;
+  padding: 0 10px 0 28px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  text-align: left;
+  cursor: default;
+}
+
+/* Like a macOS menu: the highlighted item turns accent blue. */
+.appearance-menu button:hover,
+.appearance-menu button:focus-visible {
+  outline: none;
+  background: var(--primary);
+  color: #fdfdfd;
+}
+
+/* The chosen appearance gets a checkmark, drawn as a rotated corner. */
+.appearance-menu button[aria-checked='true']::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 12px;
+  width: 4px;
+  height: 9px;
+  border: solid currentColor;
+  border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg);
 }
 
 .auth-page {

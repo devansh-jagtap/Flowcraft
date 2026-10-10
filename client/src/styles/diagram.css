@@ -177,3 +177,247 @@
     display: none;
   }
 }
+
+/* ---------- ER and UML notation ---------- */
+.shape-entity .shape-bg {
+  border-radius: 4px;
+}
+
+.shape-attribute .shape-bg,
+.shape-usecase .shape-bg {
+  border-radius: 50%;
+}
+
+.shape-attribute {
+  font-size: 12.5px;
+}
+
+.shape-attribute .shape-label {
+  padding: 0 16px;
+}
+
+.variant-key .shape-label span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.variant-partial-key .shape-label span {
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+}
+
+.shape-relationship .shape-label {
+  padding: 0 30px;
+}
+
+.shape-usecase .shape-label {
+  padding: 0 22px;
+}
+
+.shape-state .shape-bg {
+  border-radius: 14px;
+}
+
+.shape-actor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+}
+
+.shape-actor .shape-label {
+  padding: 0;
+}
+
+.actor-figure {
+  flex: none;
+  overflow: visible;
+}
+
+.pseudo-state {
+  width: 100%;
+  height: 100%;
+  border: 2.5px solid transparent;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.pseudo-state > div {
+  width: 62%;
+  height: 62%;
+  border-radius: 50%;
+}
+
+.class-node {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1.5px solid;
+  border-radius: 6px;
+  font-family: var(--font);
+  box-shadow: 0 1px 3px rgba(29, 29, 31, 0.06);
+}
+
+.class-header {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  text-align: center;
+}
+
+.class-header small {
+  font-size: 11px;
+  line-height: 16px;
+  opacity: 0.85;
+}
+
+.class-header strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.class-header .is-abstract {
+  font-style: italic;
+}
+
+.class-section {
+  margin: 0;
+  padding: 5px 12px;
+  list-style: none;
+  border-top: 1.5px solid;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 18px;
+}
+
+.class-section li {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.participant-node {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.participant-head {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: center;
+}
+
+.participant-box {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 42px;
+  padding: 0 10px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(29, 29, 31, 0.08);
+}
+
+.participant-head.is-database span {
+  position: relative;
+  padding: 18px 8px 10px;
+}
+
+.participant-head .database {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.lifeline {
+  position: absolute;
+  top: 60px;
+  bottom: 0;
+  left: 50%;
+  border-left: 1.5px dashed;
+}
+
+.react-flow__node.is-fixed {
+  pointer-events: none !important;
+  cursor: default;
+}
+
+.container-node {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1.5px solid;
+  font-family: var(--font);
+  font-size: 12.5px;
+}
+
+.container-node.is-boundary {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.35);
+  text-align: center;
+}
+
+.container-node.is-boundary strong {
+  display: block;
+  padding-top: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.container-node.is-fragment {
+  border-radius: 4px;
+}
+
+.fragment-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.fragment-tab {
+  padding: 2px 14px 2px 8px;
+  clip-path: polygon(0 0, 100% 0, 100% 60%, calc(100% - 7px) 100%, 0 100%);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.fragment-divider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1.5px dashed;
+}
+
+.fragment-divider span {
+  position: absolute;
+  top: 3px;
+  left: 8px;
+  font-weight: 500;
+}
+
+.edge-text {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.type-select {
+  width: auto;
+  min-width: 140px;
+  height: 26px;
+  font-size: 12.5px;
+  font-weight: 500;
+}

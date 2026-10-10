@@ -90,7 +90,7 @@ export function parseEr(source: string): Graph {
       const [name, tag] = splitTag(text);
       const info = tag ? CORE_TAGS[tag] : { kind: 'entity' as const };
       if (!info) issues.push({ line, message: `Unknown tag "(${tag})". Use (weak) for a weak entity or (relationship).` });
-      const node = core(info ? name : text, line);
+      const node = core(name, line);
       node.declared = true;
       node.shape = info?.kind ?? 'entity';
       node.variant = info?.variant;

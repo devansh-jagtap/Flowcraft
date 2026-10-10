@@ -52,7 +52,8 @@ export function parseSequence(source: string): Graph {
   for (const { line, text } of sourceLines(source)) {
     if (IGNORED.test(text)) continue;
 
-    const declared = text.match(PARTICIPANT);
+    // "Database --> App" is a message from a participant called Database, not a declaration.
+    const declared = !MESSAGE.test(splitLabel(text)[0]) && text.match(PARTICIPANT);
     if (declared) {
       const [, keyword, name, display] = declared;
       const variant = keyword.toLowerCase() === 'participant' ? undefined : (keyword.toLowerCase() as NodeVariant);
