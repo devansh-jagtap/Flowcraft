@@ -328,6 +328,12 @@ textarea:focus {
   font-weight: 500;
 }
 
+button.nav-link {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
 .nav-link:hover,
 .nav-link.active {
   color: var(--text);
@@ -335,18 +341,6 @@ textarea:focus {
   text-decoration: none;
 }
 
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
-  margin-left: 6px;
-}
 
 .page {
   padding-top: 32px;
@@ -488,19 +482,6 @@ textarea:focus {
     radial-gradient(circle at 80% 90%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 40%);
 }
 
-.auth-card {
-  width: 100%;
-  max-width: 410px;
-  padding: 32px;
-  display: grid;
-  gap: 16px;
-  box-shadow: var(--shadow);
-}
-
-.auth-card h1 {
-  font-size: 24px;
-  margin: 0;
-}
 
 .segmented {
   display: inline-flex;

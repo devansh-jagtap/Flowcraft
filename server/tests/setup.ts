@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { fakeClerkUsers } from './fakeClerk.js';
+
+vi.mock('@clerk/express', () => import('./fakeClerk.js'));
 
 let mongo: MongoMemoryServer | undefined;
 
@@ -11,6 +14,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
+  fakeClerkUsers.clear();
   const collections = await mongoose.connection.db!.collections();
   await Promise.all(collections.map((c) => c.deleteMany({})));
 });

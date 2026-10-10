@@ -1,5 +1,5 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/react';
+import { Link, NavLink } from 'react-router-dom';
 
 export function Logo() {
   return (
@@ -11,9 +11,6 @@ export function Logo() {
 }
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
   return (
     <header className="navbar">
       <div className="container navbar-inner">
@@ -22,34 +19,20 @@ export default function Navbar() {
           <NavLink to="/try" className="nav-link hide-sm">
             ✨ Create
           </NavLink>
-          {user ? (
-            <>
-              <NavLink to="/app" className="nav-link">
-                My diagrams
-              </NavLink>
-              <span className="avatar" title={`${user.name} · ${user.email}`}>
-                {user.name.charAt(0).toUpperCase()}
-              </span>
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  logout();
-                  navigate('/');
-                }}
-              >
-                Log out
-              </button>
-            </>
-          ) : (
-            <>
-              <NavLink to="/login" className="nav-link">
-                Log in
-              </NavLink>
-              <Link to="/register" className="btn btn-primary btn-sm">
-                Sign up free
-              </Link>
-            </>
-          )}
+          <Show when="signed-in">
+            <NavLink to="/app" className="nav-link">
+              My diagrams
+            </NavLink>
+            <UserButton />
+          </Show>
+          <Show when="signed-out">
+            <SignInButton>
+              <button className="nav-link">Log in</button>
+            </SignInButton>
+            <SignUpButton>
+              <button className="btn btn-primary btn-sm">Sign up free</button>
+            </SignUpButton>
+          </Show>
         </nav>
       </div>
     </header>
