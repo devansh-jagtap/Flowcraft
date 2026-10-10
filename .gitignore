@@ -8,3 +8,8 @@ coverage/
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# Local AI-agent tooling (Claude Code settings, installed skills); kept out of the repo
+.claude/
+.agents/
+skills-lock.json
