@@ -467,19 +467,16 @@ Then open http://localhost:5000.
 
 ## AI tool used
 
-> **TODO (Devansh): fill this section in yourself before submitting.** Say truthfully whether you used **Code0** or **Kiro**, and describe your own experience. Don't keep any line here that isn't true.
-
-**Tool:** _Code0 / Kiro_ (keep the one you used)
+**Tools:** the **Code0** extension (running on Claude credits) and **Claude Code**. That's why many commits list Claude as a co-author.
 
 ### AI development experience
-_2 to 4 sentences on how you used the tool: what you asked it for, what it did well, where it got things wrong, and how you checked and corrected its output._
+I used Code0 and Claude Code as pair programmers. I described the feature I wanted, reviewed the plan and the code they wrote, and steered the design through several rounds of feedback. They were strongest at building a complete feature end to end (React components, Express routes, zod validation and tests) and at tracking down bugs from an error message. They also got things wrong. The first UI looked templated, with emoji and generic styling, and needed several redesigns before it looked the way I wanted. One history rewrite changed more commits than the tool first reported. I checked every change with the type checker, the linter and the test suites, by trying it in the browser, and by asking for proof before anything was pushed.
 
 ### Tasks where the AI tool helped
-Write 3 to 5 specific tasks from your own sessions, for example:
-1. _Component development: ..._
-2. _API creation: ..._
-3. _Debugging: ..._ (for example one of the fixes listed under "Engineering notes")
-4. _Database integration, testing or refactoring: ..._
+1. **Component development:** the React Flow diagram editor with live text parsing and auto-layout, the macOS-style landing page with a live MacBook demo, the Finder-style library, and the Light / Dark / Auto appearance menu.
+2. **API creation:** the Express and MongoDB REST API (diagrams, sharing, forking, stats) with zod validation on every request, and the AI generation endpoint that schema-checks the model's answer and retries once with feedback.
+3. **Debugging:** the canvas's infinite render loop, merged node ids, and the Gemini output problems listed under "Engineering notes".
+4. **Refactoring and new features:** moving sign-in from email and password to Clerk, adding the ER and UML diagram types, and reorganising the client into feature folders with one stylesheet per area.
 
 <br />
 
