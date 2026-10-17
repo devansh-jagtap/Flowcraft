@@ -1,5 +1,7 @@
+import { count } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { User } from '../src/models/index.js';
+import { db } from '../src/db/client.js';
+import { users } from '../src/db/schema.js';
 import { fakeClerkUsers, tokenFor } from './fakeClerk.js';
 import { api, signUp } from './helpers.js';
 
@@ -15,7 +17,7 @@ describe('auth', () => {
 
     const again = await api().get('/api/auth/me').set(auth).expect(200);
     expect(again.body.user.id).toBe(user.id);
-    expect(await User.countDocuments()).toBe(1);
+    expect((await db().select({ n: count() }).from(users))[0].n).toBe(1);
   });
 
   it('falls back to the username when Clerk has no name', async () => {
@@ -24,13 +26,13 @@ describe('auth', () => {
   });
 
   it('lets the verified owner of an email claim an unclaimed account', async () => {
-    const legacy = await User.create({ name: 'Old Account', email: 'me@example.com' });
+    const [legacy] = await db().insert(users).values({ name: 'Old Account', email: 'me@example.com' }).returning();
     const { user } = await signUp({ email: 'me@example.com' });
     expect(user.id).toBe(legacy.id);
   });
 
   it('does not hand an account to an unverified email', async () => {
-    const legacy = await User.create({ name: 'Old Account', email: 'me@example.com' });
+    const [legacy] = await db().insert(users).values({ name: 'Old Account', email: 'me@example.com' }).returning();
     const { user } = await signUp({ email: 'me@example.com', emailVerified: false });
     expect(user.id).not.toBe(legacy.id);
     expect(user.email).toBeUndefined();

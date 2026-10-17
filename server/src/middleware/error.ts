@@ -1,5 +1,4 @@
 import type { NextFunction, Request, Response } from 'express';
-import mongoose from 'mongoose';
 import { env } from '../config/env.js';
 import { HttpError, type ErrorDetail } from '../lib/HttpError.js';
 
@@ -15,14 +14,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
   if (err instanceof HttpError) {
     ({ status, message, details, code } = err);
-  } else if (err instanceof mongoose.Error.ValidationError) {
-    status = 400;
-    details = Object.values(err.errors).map((e) => ({ field: e.path, message: e.message }));
-    message = details[0]?.message ?? 'Invalid input';
-  } else if (err instanceof mongoose.Error.CastError) {
-    status = 400;
-    message = `Invalid ${err.path}`;
-  } else if (isDuplicateKey(err)) {
+  } else if (isUniqueViolation(err)) {
     status = 409;
     message = 'That value is already taken';
   } else if (isBodyParseError(err)) {
@@ -36,5 +28,11 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   res.status(status).json({ error: { message, ...(code && { code }), ...(details && { details }) } });
 }
 
-const isDuplicateKey = (err: unknown) => (err as { code?: number })?.code === 11000;
+/** Postgres error code, also when Drizzle wraps the driver error in `cause`. */
+const pgCode = (err: unknown): string | undefined => {
+  const e = err as { code?: unknown; cause?: { code?: unknown } } | undefined;
+  const code = e?.code ?? e?.cause?.code;
+  return typeof code === 'string' ? code : undefined;
+};
+const isUniqueViolation = (err: unknown) => pgCode(err) === '23505';
 const isBodyParseError = (err: unknown) => (err as { type?: string })?.type === 'entity.parse.failed';

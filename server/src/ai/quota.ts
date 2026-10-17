@@ -1,6 +1,8 @@
 import { env } from '../config/env.js';
 import { HttpError } from '../lib/HttpError.js';
-import { AiUsage } from '../models/AiUsage.js';
+import { and, eq, gt, lt, lte, or, sql } from 'drizzle-orm';
+import { db } from '../db/client.js';
+import { aiUsage } from '../db/schema.js';
 
 /** What the client shows as "3 of 5 free generations left". */
 export interface FreeUsage {
@@ -18,7 +20,7 @@ function toUsage(count: number, resetsAt: Date | null): FreeUsage {
 }
 
 export async function freeUsage(key: string): Promise<FreeUsage> {
-  const usage = await AiUsage.findOne({ key }).lean();
+  const [usage] = await db().select().from(aiUsage).where(eq(aiUsage.key, key));
   return usage && usage.resetsAt > new Date() ? toUsage(usage.count, usage.resetsAt) : toUsage(0, null);
 }
 
@@ -47,18 +49,34 @@ export async function reserveFreeGeneration(key: string): Promise<FreeUsage> {
 
   const now = new Date();
   const resetsAt = new Date(now.getTime() + windowMs());
-  // Start a fresh window when there is no record yet or the last window has ended.
-  await AiUsage.updateOne({ key }, { $setOnInsert: { count: 0, resetsAt } }, { upsert: true });
-  await AiUsage.updateOne({ key, resetsAt: { $lte: now } }, { $set: { count: 0, resetsAt } });
+  const ended = lte(aiUsage.resetsAt, now);
+  // One atomic statement: start a fresh window if there is none or it has ended, otherwise count one more
+  // unless the limit is reached (then no row comes back).
+  const [usage] = await db()
+    .insert(aiUsage)
+    .values({ key, count: 1, resetsAt })
+    .onConflictDoUpdate({
+      target: aiUsage.key,
+      set: {
+        count: sql`case when ${ended} then 1 else ${aiUsage.count} + 1 end`,
+        resetsAt: sql`case when ${ended} then excluded.resets_at else ${aiUsage.resetsAt} end`,
+      },
+      setWhere: or(ended, lt(aiUsage.count, limit)),
+    })
+    .returning();
 
-  const usage = await AiUsage.findOneAndUpdate({ key, count: { $lt: limit } }, { $inc: { count: 1 } }, { new: true }).lean();
   if (!usage) {
-    const current = await AiUsage.findOne({ key }).lean();
+    const [current] = await db().select().from(aiUsage).where(eq(aiUsage.key, key));
     throw limitReached(current?.resetsAt ?? null);
   }
+  // Now and then, clear out windows that ended over a day ago so guest IPs don't pile up.
+  if (Math.random() < 0.02) await db().delete(aiUsage).where(lt(aiUsage.resetsAt, new Date(now.getTime() - 86_400_000)));
   return toUsage(usage.count, usage.resetsAt);
 }
 
 export async function refundFreeGeneration(key: string): Promise<void> {
-  await AiUsage.updateOne({ key, count: { $gt: 0 } }, { $inc: { count: -1 } });
+  await db()
+    .update(aiUsage)
+    .set({ count: sql`${aiUsage.count} - 1` })
+    .where(and(eq(aiUsage.key, key), gt(aiUsage.count, 0)));
 }

@@ -14,7 +14,9 @@ export const env = {
   isProduction,
   isTest: nodeEnv === 'test',
   port: Number(process.env.PORT ?? 5000),
-  mongoUri: process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/flowcraft',
+  // Neon Postgres. `neon deploy` pulls both into the repo's .env.local: pooled for the app, direct for migrations.
+  databaseUrl: process.env.DATABASE_URL ?? '',
+  databaseUrlUnpooled: process.env.DATABASE_URL_UNPOOLED ?? '',
   clerk: {
     // Used to verify session tokens and look up profiles. Get it from the Clerk dashboard → API keys.
     secretKey: process.env.CLERK_SECRET_KEY,

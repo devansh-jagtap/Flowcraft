@@ -13,3 +13,4 @@ coverage/
 .claude/
 .agents/
 skills-lock.json
+.neon

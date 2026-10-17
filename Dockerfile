@@ -24,6 +24,8 @@ COPY client/package.json client/
 RUN npm ci --omit=dev -w server --include-workspace-root=false && npm cache clean --force
 
 COPY --from=build /app/server/dist server/dist
+# SQL migrations, applied when the API starts
+COPY server/drizzle server/drizzle
 COPY --from=build /app/client/dist client/dist
 
 USER node
