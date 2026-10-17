@@ -58,11 +58,14 @@ export async function disconnectDB() {
   pool = undefined;
 }
 
-/** For /api/health: true when a trivial query succeeds within two seconds. */
+/**
+ * For /api/health: true when a trivial query succeeds within ten seconds. Neon suspends an idle
+ * database and waking it takes a few seconds, which must not look like an outage to a host's health check.
+ */
 export async function isDatabaseUp(): Promise<boolean> {
   if (!current) return false;
   try {
-    await Promise.race([current.execute(sql`select 1`), new Promise((_, reject) => setTimeout(reject, 2000))]);
+    await Promise.race([current.execute(sql`select 1`), new Promise((_, reject) => setTimeout(reject, 10_000))]);
     return true;
   } catch {
     return false;
