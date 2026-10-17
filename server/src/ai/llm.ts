@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { HttpError } from '../lib/HttpError.js';
-import { generateWithGateway } from './chatCompletions.js';
+import { generateWithChatCompletions } from './chatCompletions.js';
 import { generateWithGemini } from './gemini.js';
 
 export interface GenerateJsonOptions {
@@ -12,22 +12,93 @@ export interface GenerateJsonOptions {
   temperature?: number;
 }
 
+export const AI_PROVIDERS = ['gemini', 'openai', 'gateway'] as const;
+export type AiProvider = (typeof AI_PROVIDERS)[number];
+
+export const PROVIDER_LABELS: Record<AiProvider, string> = {
+  gemini: 'Gemini',
+  openai: 'OpenAI',
+  gateway: 'Vercel AI Gateway',
+};
+
+/** Which provider to call and with what key. */
+export interface AiCredentials {
+  provider: AiProvider;
+  apiKey: string;
+  model: string;
+  baseUrl: string;
+  /** True for a visitor's own key (bring your own key), false for the server's key from .env. */
+  own: boolean;
+}
+
 /** Vercel AI Gateway wins when both keys are set; Gemini direct is the fallback. */
-export const aiProvider = (): 'gateway' | 'gemini' | null =>
-  env.aiGateway.apiKey ? 'gateway' : env.gemini.apiKey ? 'gemini' : null;
+export function serverCredentials(): AiCredentials | null {
+  if (env.aiGateway.apiKey) return { provider: 'gateway', ...env.aiGateway, own: false };
+  if (env.gemini.apiKey) return { provider: 'gemini', ...env.gemini, own: false };
+  return null;
+}
 
-export const isAiConfigured = () => aiProvider() !== null;
+export const isAiConfigured = () => serverCredentials() !== null;
 
-/** Asks the configured model for a JSON answer and returns the parsed object. */
-export async function generateJson(options: GenerateJsonOptions): Promise<unknown> {
-  const provider = aiProvider();
-  if (!provider) {
-    throw new HttpError(
-      503,
-      'AI generation is not set up yet. Add AI_GATEWAY_API_KEY (or GEMINI_API_KEY) to server/.env and restart the server.'
-    );
+/** Credentials for a visitor's own key, filling in the provider's default model and endpoint. */
+export function ownCredentials(provider: AiProvider, apiKey: string, model?: string): AiCredentials {
+  const defaults = provider === 'gateway' ? env.aiGateway : provider === 'openai' ? env.openai : env.gemini;
+  return { provider, apiKey, model: model || defaults.model, baseUrl: defaults.baseUrl, own: true };
+}
+
+export const missingKeyError = () =>
+  new HttpError(
+    503,
+    'This server has no AI key. Add your own API key to generate diagrams, or set AI_GATEWAY_API_KEY (or GEMINI_API_KEY) in server/.env and restart the server.',
+    undefined,
+    'AI_KEY_REQUIRED'
+  );
+
+/** Asks the model for a JSON answer and returns the parsed object. */
+export async function generateJson(options: GenerateJsonOptions, credentials = serverCredentials()): Promise<unknown> {
+  if (!credentials) throw missingKeyError();
+  return credentials.provider === 'gemini' ? generateWithGemini(options, credentials) : generateWithChatCompletions(options, credentials);
+}
+
+/**
+ * Turns a provider's error response into a friendly HttpError. Problems with the server's key are the
+ * operator's to fix (503); problems with a visitor's own key are theirs (400 with code AI_KEY_INVALID).
+ */
+export function providerError(credentials: AiCredentials, status: number, detail: string): HttpError {
+  const name = PROVIDER_LABELS[credentials.provider];
+  const { own } = credentials;
+  const keyProblem = (message: string) =>
+    own ? new HttpError(400, message, undefined, 'AI_KEY_INVALID') : new HttpError(503, message);
+
+  const badKey = status === 401 || (status === 400 && /API key/i.test(detail));
+  if (badKey) {
+    return keyProblem(own ? `Your ${name} API key was rejected. Check it and try again.` : `The ${name} API key is invalid. Check ${envVar(credentials)}.`);
   }
-  return provider === 'gateway' ? generateWithGateway(options) : generateWithGemini(options);
+  if (status === 402) return keyProblem(own ? `Your ${name} account is out of credits.` : `The ${name} account is out of credits.`);
+  if (status === 403) return keyProblem(`${own ? 'Your' : `The ${name}`} API key does not have access to the model "${credentials.model}".`);
+  if (status === 404 && own) return keyProblem(`${name} couldn't find the model "${credentials.model}". Check the model name.`);
+  if (status === 429) {
+    if (own && /quota|billing|credit/i.test(detail)) return keyProblem(`Your ${name} account has hit its usage quota.`);
+    return new HttpError(429, 'The AI is getting too many requests right now. Wait a minute and try again.');
+  }
+  if (own && status === 400) {
+    // Their own account, so the provider's explanation is safe and useful to show.
+    return keyProblem(`${name} rejected the request: ${providerMessage(detail)}`);
+  }
+  return new HttpError(502, 'The AI service returned an error. Please try again.');
+}
+
+const envVar = (credentials: AiCredentials) => (credentials.provider === 'gateway' ? 'AI_GATEWAY_API_KEY' : 'GEMINI_API_KEY');
+
+/** Pulls `error.message` out of a provider's JSON error body. */
+function providerMessage(detail: string): string {
+  try {
+    const message = (JSON.parse(detail) as { error?: { message?: string } }).error?.message;
+    if (message) return message.slice(0, 200);
+  } catch {
+    /* not JSON */
+  }
+  return 'unknown error';
 }
 
 /** POSTs JSON with a timeout, turning network failures into friendly HttpErrors. */

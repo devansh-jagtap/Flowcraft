@@ -1,8 +1,10 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
-import { aiApi } from '../../api/ai';
+import { aiApi, needsOwnKey } from '../../api/ai';
 import type { GeneratedDiagram } from '../../api/types';
 import { useAiEnabled } from '../../hooks/useAiEnabled';
+import { useAiKey } from '../../lib/aiKey';
 import { EXAMPLE_PROMPTS } from '../../lib/examples';
+import { AiKeyButton, AiKeyNotice, AiUsageLine } from './AiKey';
 
 interface Props {
   onGenerated: (diagram: GeneratedDiagram, prompt: string) => Promise<void> | void;
@@ -10,39 +12,23 @@ interface Props {
   autoFocus?: boolean;
 }
 
-export function AiSetupNotice() {
-  return (
-    <div className="ai-notice">
-      <strong>AI isn't switched on yet.</strong> Add a{' '}
-      <a href="https://vercel.com/ai-gateway" target="_blank" rel="noreferrer">
-        Vercel AI Gateway
-      </a>{' '}
-      key as <code>AI_GATEWAY_API_KEY</code> (or a{' '}
-      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-        Gemini
-      </a>{' '}
-      key as <code>GEMINI_API_KEY</code>) in <code>server/.env</code>, then restart the server. You can still use templates or write the text yourself.
-    </div>
-  );
-}
-
 /** "Describe your diagram" box used on the landing page and in the new-diagram dialog. */
 export default function PromptBox({ onGenerated, size = 'hero', autoFocus }: Props) {
   const enabled = useAiEnabled();
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<unknown>(null);
 
   async function run(text: string) {
     const trimmed = text.trim();
     if (trimmed.length < 3 || busy) return;
     setBusy(true);
-    setError('');
+    setError(null);
     try {
       const diagram = await aiApi.generate(trimmed);
       await onGenerated(diagram, trimmed);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err);
     } finally {
       setBusy(false);
     }
@@ -87,8 +73,8 @@ export default function PromptBox({ onGenerated, size = 'hero', autoFocus }: Pro
       </form>
 
       {busy && <p className="prompt-status">Drawing your diagram. This takes a few seconds.</p>}
-      {error && <div className="alert">{error}</div>}
-      {enabled === false && <AiSetupNotice />}
+      {error !== null && <AiError error={error} />}
+      {enabled === false && <AiKeyNotice />}
 
       {enabled !== false && !busy && (
         <div className="prompt-examples">
@@ -106,6 +92,23 @@ export default function PromptBox({ onGenerated, size = 'hero', autoFocus }: Pro
             </button>
           ))}
         </div>
+      )}
+      {enabled && !busy && <AiUsageLine />}
+    </div>
+  );
+}
+
+/** An AI error, with a shortcut to the key dialog when a key would fix it. */
+export function AiError({ error }: { error: unknown }) {
+  const ownKey = useAiKey();
+  return (
+    <div className="alert">
+      {(error as Error).message}
+      {needsOwnKey(error) && (
+        <>
+          {' '}
+          <AiKeyButton>{ownKey ? 'Change your API key' : 'Add your API key'}</AiKeyButton>
+        </>
       )}
     </div>
   );

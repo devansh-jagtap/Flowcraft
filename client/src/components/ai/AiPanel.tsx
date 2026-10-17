@@ -4,7 +4,8 @@ import type { DiagramDraft, GeneratedDiagram } from '../../api/types';
 import { useAiEnabled } from '../../hooks/useAiEnabled';
 import { REFINE_EXAMPLES } from '../../lib/examples';
 import { timeAgo } from '../../lib/format';
-import { AiSetupNotice } from './PromptBox';
+import { AiKeyNotice, AiUsageLine } from './AiKey';
+import { AiError } from './PromptBox';
 
 interface Props {
   draft: DiagramDraft;
@@ -17,7 +18,7 @@ export default function AiPanel({ draft, onApply, onUndo }: Props) {
   const enabled = useAiEnabled();
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<unknown>(null);
   const listRef = useRef<HTMLOListElement>(null);
   const isEmpty = !draft.source.trim();
 
@@ -29,13 +30,13 @@ export default function AiPanel({ draft, onApply, onUndo }: Props) {
     const trimmed = text.trim();
     if (trimmed.length < 3 || busy) return;
     setBusy(true);
-    setError('');
+    setError(null);
     try {
       const result = await aiApi.generate(trimmed, isEmpty ? undefined : { type: draft.type, source: draft.source });
       onApply(result, trimmed);
       setPrompt('');
     } catch (err) {
-      setError((err as Error).message);
+      setError(err);
     } finally {
       setBusy(false);
     }
@@ -56,7 +57,7 @@ export default function AiPanel({ draft, onApply, onUndo }: Props) {
   if (enabled === false) {
     return (
       <div className="ai-panel">
-        <AiSetupNotice />
+        <AiKeyNotice />
       </div>
     );
   }
@@ -91,7 +92,7 @@ export default function AiPanel({ draft, onApply, onUndo }: Props) {
         )}
       </ol>
 
-      {error && <div className="alert">{error}</div>}
+      {error !== null && <AiError error={error} />}
       {onUndo && !busy && (
         <button className="link-btn undo-btn" onClick={onUndo}>
           Undo last change
@@ -123,6 +124,7 @@ export default function AiPanel({ draft, onApply, onUndo }: Props) {
           {busy ? 'Sending…' : 'Send'}
         </button>
       </form>
+      {!busy && <AiUsageLine />}
     </div>
   );
 }

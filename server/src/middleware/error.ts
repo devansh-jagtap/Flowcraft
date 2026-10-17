@@ -11,9 +11,10 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   let status = 500;
   let message = 'Something went wrong';
   let details: ErrorDetail[] | undefined;
+  let code: string | undefined;
 
   if (err instanceof HttpError) {
-    ({ status, message, details } = err);
+    ({ status, message, details, code } = err);
   } else if (err instanceof mongoose.Error.ValidationError) {
     status = 400;
     details = Object.values(err.errors).map((e) => ({ field: e.path, message: e.message }));
@@ -32,7 +33,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   }
 
   if (status >= 500 && !env.isTest) console.error(err);
-  res.status(status).json({ error: { message, ...(details && { details }) } });
+  res.status(status).json({ error: { message, ...(code && { code }), ...(details && { details }) } });
 }
 
 const isDuplicateKey = (err: unknown) => (err as { code?: number })?.code === 11000;

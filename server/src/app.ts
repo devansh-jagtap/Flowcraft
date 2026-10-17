@@ -18,6 +18,8 @@ const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.
 
 export function createApp() {
   const app = express();
+  // Behind a hosting proxy, req.ip must be the visitor's address for the per-IP AI limits to work.
+  app.set('trust proxy', env.trustProxy);
 
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors({ origin: env.clientOrigins }));

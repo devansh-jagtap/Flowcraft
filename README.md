@@ -28,7 +28,8 @@ It is made for:
 - Prompt to diagram: the model picks the diagram type and writes it in Flowcraft's text syntax.
 - Refine by chatting. Every AI change can be undone, and the prompt history is saved with the diagram.
 - Answers are schema-checked and syntax-checked. Problems (a disconnected step, a missing `end`, an unknown attribute tag) are sent back to the model for one automatic retry.
-- The AI key stays on the server and generation is rate-limited per IP.
+- Free tier plus bring your own key: every visitor gets a few free generations a day on the server's key (counted per account, or per IP for guests). After that they can add their own Gemini, OpenAI or Vercel AI Gateway key, which is kept only in their browser and never stored on the server.
+- Server keys never reach the browser, and generation is rate-limited per IP.
 
 **Editing**
 - Every diagram is plain text with a live preview, so you can always fix things by hand.
@@ -135,7 +136,7 @@ flowcraft/
 │       └── styles/        tokens.css first, then one stylesheet per area of the app
 ├── server/                Express + MongoDB REST API (TypeScript)
 │   ├── src/
-│   │   ├── ai/            AI Gateway + Gemini clients, system prompt, output checks
+│   │   ├── ai/            AI Gateway, OpenAI + Gemini clients, free quota, system prompt, output checks
 │   │   ├── controllers/   route handlers
 │   │   ├── routes/        Express routers
 │   │   ├── models/        Mongoose models: User, Diagram
@@ -219,6 +220,10 @@ GEMINI_API_KEY=...            # or AI_GATEWAY_API_KEY=...
 | `AI_GATEWAY_MODEL` | Gateway model id | `google/gemini-2.5-flash` |
 | `GEMINI_API_KEY` | Fallback when no gateway key is set: calls Gemini directly | |
 | `GEMINI_MODEL` | Gemini model | `gemini-2.5-flash` |
+| `AI_FREE_LIMIT` | Free generations per visitor on the server's key. After that, visitors add their own key. `0` means own keys only. | `5` |
+| `AI_FREE_WINDOW_HOURS` | How often the free generations reset | `24` |
+| `OPENAI_MODEL` | Default model for visitors who bring an OpenAI key | `gpt-4.1-mini` |
+| `TRUST_PROXY` | Express `trust proxy`, so per-IP limits see real visitor IPs behind a host's proxy. Use the number of proxies in front of the app. | `1` in production, off otherwise |
 
 `client/.env`:
 
@@ -235,7 +240,9 @@ Never commit either `.env` file.
 | --- | --- |
 | "Sign-in isn't set up on the server" | `CLERK_SECRET_KEY` is missing from `server/.env`. Add it and restart. |
 | "Your session has expired, please log in again" right after signing in | The server can't verify the token. Check that `CLERK_SECRET_KEY` is in `server/.env` (not `client/.env`) and belongs to the same Clerk app as the publishable key, and that `CLIENT_ORIGIN` matches the URL in your browser. Then restart. |
-| "AI isn't switched on yet" | No AI key in `server/.env`. Add `GEMINI_API_KEY` or `AI_GATEWAY_API_KEY` and restart. |
+| "AI generation needs an API key" | No AI key in `server/.env`. Add `GEMINI_API_KEY` or `AI_GATEWAY_API_KEY` and restart, or add your own key in the app. |
+| "You've used your free AI generations" during development | Raise `AI_FREE_LIMIT` in `server/.env`, or add your own key in the app. |
+| Every guest shares one free quota after deploying | The app sees the proxy's IP. Set `TRUST_PROXY` to the number of proxies in front of it (usually `1`). |
 | "Cannot reach the server. Is the API running?" | The API on port 5000 isn't running, often because MongoDB isn't reachable. Check the terminal running `npm run dev`. |
 
 <br />

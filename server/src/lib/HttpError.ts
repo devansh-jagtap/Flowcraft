@@ -7,7 +7,9 @@ export class HttpError extends Error {
   constructor(
     public readonly status: number,
     message: string,
-    public readonly details?: ErrorDetail[]
+    public readonly details?: ErrorDetail[],
+    /** Machine-readable reason the client can react to, e.g. 'AI_FREE_LIMIT'. */
+    public readonly code?: string
   ) {
     super(message);
   }
