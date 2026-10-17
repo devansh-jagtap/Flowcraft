@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { HttpError } from '../lib/HttpError.js';
-import { generateWithGateway } from './gateway.js';
+import { generateWithGateway } from './chatCompletions.js';
 import { generateWithGemini } from './gemini.js';
 
 export interface GenerateJsonOptions {
