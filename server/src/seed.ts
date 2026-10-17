@@ -1,8 +1,8 @@
 /* Creates a demo account with a few example diagrams. Safe to run repeatedly. */
-import { connectDB, disconnectDB } from './config/db.js';
-import { env } from './config/env.js';
+import { eq } from 'drizzle-orm';
+import { connectDB, db, disconnectDB } from './db/client.js';
+import { diagrams, users } from './db/schema.js';
 import { createShareId } from './lib/shareId.js';
-import { Diagram, User } from './models/index.js';
 
 // Sign in through Clerk with this (verified) email to claim the demo diagrams. Set SEED_EMAIL to use your own.
 const DEMO = { name: 'Demo User', email: (process.env.SEED_EMAIL ?? 'demo@flowcraft.app').toLowerCase() };
@@ -55,26 +55,21 @@ Shower & get ready -> Coffee -> Commute -> (Start work)`,
 ] as const;
 
 async function seed() {
-  await connectDB(env.mongoUri);
+  await connectDB();
 
-  const existing = await User.findOne({ email: DEMO.email });
-  if (existing) {
-    await Diagram.deleteMany({ owner: existing._id });
-    await existing.deleteOne();
-  }
-
-  const user = await User.create(DEMO);
-  const diagrams = await Diagram.insertMany(SAMPLES.map((s) => ({ ...s, owner: user._id })));
+  // Deleting the user removes their diagrams too (ON DELETE CASCADE).
+  await db().delete(users).where(eq(users.email, DEMO.email));
+  const [user] = await db().insert(users).values(DEMO).returning();
 
   // Make the first one public so the share page can be tried immediately.
-  const shared = diagrams[0];
-  shared.isPublic = true;
-  shared.shareId = createShareId();
-  await shared.save();
+  const shareId = createShareId();
+  await db()
+    .insert(diagrams)
+    .values(SAMPLES.map((s, i) => ({ ...s, ownerId: user.id, ...(i === 0 && { isPublic: true, shareId }) })));
 
   console.log('✓ Seeded demo data');
   console.log(`  Sign in with the Clerk account for ${DEMO.email} to see them`);
-  console.log(`  Public link: /s/${shared.shareId}`);
+  console.log(`  Public link: /s/${shareId}`);
 }
 
 seed()

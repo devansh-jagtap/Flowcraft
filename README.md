@@ -107,10 +107,10 @@ Student -- Has == Dependent: 1:N
 | Diagrams | React Flow (canvas), dagre (auto-layout), html-to-image (PNG/SVG export) |
 | Styling | Plain CSS with design tokens, Geist (self-hosted font), Phosphor icons |
 | Backend | Node.js, Express 5, TypeScript, zod (request validation), helmet, rate limiting |
-| Database | MongoDB with Mongoose (schemas, indexes, aggregation for stats) |
+| Database | Postgres on [Neon](https://neon.com), with Drizzle ORM and SQL migrations (`server/drizzle`) |
 | Authentication | Clerk |
 | AI | Google Gemini (`gemini-2.5-flash`), called directly or through Vercel AI Gateway |
-| Testing | Vitest, Supertest, mongodb-memory-server |
+| Testing | Vitest, Supertest, PGlite (in-memory Postgres) |
 | Tooling | npm workspaces (monorepo), ESLint, Docker, GitHub Actions |
 
 ### Project structure
@@ -134,18 +134,21 @@ flowcraft/
 │       ├── context/       auth (Clerk) and toasts
 │       ├── hooks/         useAsync, useDebouncedValue, useAiEnabled
 │       └── styles/        tokens.css first, then one stylesheet per area of the app
-├── server/                Express + MongoDB REST API (TypeScript)
+├── server/                Express + Postgres REST API (TypeScript)
 │   ├── src/
 │   │   ├── ai/            AI Gateway, OpenAI + Gemini clients, free quota, system prompt, output checks
 │   │   ├── controllers/   route handlers
 │   │   ├── routes/        Express routers
-│   │   ├── models/        Mongoose models: User, Diagram
+│   │   ├── db/            Drizzle schema (users, diagrams, ai_usage) and Neon connection
+│   │   ├── models/        shared constants: diagram types, themes
 │   │   ├── validators/    zod schemas for every request
 │   │   ├── middleware/    Clerk auth, error handler
 │   │   └── lib/           HttpError, validation helper, share ids
 │   └── tests/             API integration tests
 ├── Dockerfile             one production image: API plus the built client
-└── docker-compose.yml     MongoDB, and optionally the full app
+├── server/drizzle/        SQL migrations, applied automatically when the API starts
+├── neon.ts                Neon project config (`neon deploy`)
+└── docker-compose.yml     run the production image locally
 ```
 
 **How a diagram is drawn.** The text is parsed into nodes and edges by the parser for its type (`client/src/lib/diagram/parse*.ts`). Flowcharts, trees, class, use case and state diagrams are laid out by dagre (`layout.ts`). ER diagrams lay out entities and relationships first and reserve room above and below each one for its attribute ovals (`layoutEr.ts`). Sequence diagrams place lifelines left to right and messages top to bottom (`layoutSequence.ts`). Positions the user dragged are applied on top, and React Flow renders the custom shapes and connectors. Node ids come from the text (for example `trip/stay/hotel`), so a dragged node stays attached to the right box while you keep typing.
@@ -159,7 +162,7 @@ flowcraft/
 ### Requirements
 
 - **Node.js 22.9 or newer**
-- **MongoDB**: local, through Docker (`docker compose up -d mongo`), or a free [Atlas](https://www.mongodb.com/atlas) cluster
+- **Postgres**: a free [Neon](https://neon.com) project. `neon deploy` writes `DATABASE_URL` and `DATABASE_URL_UNPOOLED` to `.env.local` in the repo root, which the API reads. Any other Postgres works too.
 - A free **[Clerk](https://dashboard.clerk.com)** application for sign-in
 - Optional: an AI key, either [Vercel AI Gateway](https://vercel.com/ai-gateway) or [Google Gemini](https://aistudio.google.com/apikey) (free). Without one, everything except AI generation still works.
 
@@ -200,7 +203,6 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 ```bash
 # server/.env
 CLERK_SECRET_KEY=sk_test_...
-MONGODB_URI=mongodb://127.0.0.1:27017/flowcraft
 CLIENT_ORIGIN=http://localhost:5173
 GEMINI_API_KEY=...            # or AI_GATEWAY_API_KEY=...
 ```
@@ -213,7 +215,8 @@ GEMINI_API_KEY=...            # or AI_GATEWAY_API_KEY=...
 | --- | --- | --- |
 | `CLERK_SECRET_KEY` | Verifies session tokens and reads profiles. **Required.** | |
 | `CLERK_JWT_KEY` | Optional PEM public key to verify tokens without a network call | |
-| `MONGODB_URI` | MongoDB connection string | `mongodb://127.0.0.1:27017/flowcraft` |
+| `DATABASE_URL` | Postgres connection string for the app. On Neon, the pooled one (`-pooler` host). **Required.** | |
+| `DATABASE_URL_UNPOOLED` | Direct connection used to run migrations at startup. Falls back to `DATABASE_URL`. | |
 | `PORT` | API port | `5000` |
 | `CLIENT_ORIGIN` | Allowed browser origins, comma-separated. Must include the URL you open the app on. | `http://localhost:5173` |
 | `AI_GATEWAY_API_KEY` | Enables AI generation through Vercel AI Gateway. Used instead of `GEMINI_API_KEY` when set. | |
@@ -243,7 +246,7 @@ Never commit either `.env` file.
 | "AI generation needs an API key" | No AI key in `server/.env`. Add `GEMINI_API_KEY` or `AI_GATEWAY_API_KEY` and restart, or add your own key in the app. |
 | "You've used your free AI generations" during development | Raise `AI_FREE_LIMIT` in `server/.env`, or add your own key in the app. |
 | Every guest shares one free quota after deploying | The app sees the proxy's IP. Set `TRUST_PROXY` to the number of proxies in front of it (usually `1`). |
-| "Cannot reach the server. Is the API running?" | The API on port 5000 isn't running, often because MongoDB isn't reachable. Check the terminal running `npm run dev`. |
+| "Cannot reach the server. Is the API running?" | The API on port 5000 isn't running, often because Postgres isn't reachable or `DATABASE_URL` is missing. Check the terminal running `npm run dev`. |
 
 <br />
 
@@ -252,7 +255,7 @@ Never commit either `.env` file.
 ### Development
 
 ```bash
-docker compose up -d mongo     # skip if you use your own MongoDB
+neon deploy                    # once: provisions Postgres and writes .env.local
 npm run dev
 ```
 
@@ -286,16 +289,18 @@ npm run lint
 npm run build
 ```
 
-The API tests start an in-memory MongoDB (the binary downloads on the first run) and use a fake Clerk, so they need no keys. GitHub Actions runs typecheck, lint, tests and build on every push to `main` and on pull requests (`.github/workflows/ci.yml`).
+The API tests run against an in-memory Postgres (PGlite) with the real migrations and use a fake Clerk, so they need no keys. GitHub Actions runs typecheck, lint, tests and build on every push to `main` and on pull requests (`.github/workflows/ci.yml`).
 
 ### Production
 
-Build with `VITE_CLERK_PUBLISHABLE_KEY` set, then run `npm start` with `NODE_ENV=production`, `CLERK_SECRET_KEY`, `CLIENT_ORIGIN` and `MONGODB_URI`. Express serves the built React app, so everything runs as one service on port 5000.
+Build with `VITE_CLERK_PUBLISHABLE_KEY` set, then run `npm start` with `NODE_ENV=production`, `CLERK_SECRET_KEY`, `CLIENT_ORIGIN`, `DATABASE_URL` and `DATABASE_URL_UNPOOLED`. Pending migrations are applied when the API starts. Express serves the built React app, so everything runs as one service on port 5000.
+
+After changing `server/src/db/schema.ts`, run `npm run db:generate -w server` and commit the new file in `server/drizzle`.
 
 With Docker:
 
 ```bash
-VITE_CLERK_PUBLISHABLE_KEY=pk_... CLERK_SECRET_KEY=sk_... docker compose --profile full up --build
+VITE_CLERK_PUBLISHABLE_KEY=pk_... CLERK_SECRET_KEY=sk_... docker compose up --build   # reads DATABASE_URL from .env.local
 ```
 
 Then open http://localhost:5000.
@@ -317,10 +322,10 @@ I used Code0 and Claude Code as pair programmers. I described the feature I want
 ## 8. Tasks where I used the AI tool
 
 1. **Component development:** the React Flow diagram editor with live text parsing and auto-layout, the macOS-style landing page with a live MacBook demo, the Finder-style library, and the Light / Dark / Auto appearance menu.
-2. **API creation:** the Express and MongoDB REST API (diagrams, sharing, forking, stats) with zod validation on every request, and the AI generation endpoint that schema-checks the model's answer and retries once with feedback.
+2. **API creation:** the Express REST API (diagrams, sharing, forking, stats; first on MongoDB, later moved to Neon Postgres) with zod validation on every request, and the AI generation endpoint that schema-checks the model's answer and retries once with feedback.
 3. **Debugging:** an infinite render loop on the diagram canvas, two different steps merging into one node, and AI answers that were invalid (steps left unconnected, or a whole diagram on one line), which led to stricter checks and an automatic retry.
 4. **Refactoring:** moving sign-in from email and password to Clerk, adding the ER and UML diagram types, and reorganising the client into feature folders with one stylesheet per area.
-5. **Testing:** API integration tests that run against an in-memory MongoDB with a fake Clerk, and unit tests for the diagram parsers and layouts.
+5. **Testing:** API integration tests that run against an in-memory Postgres with a fake Clerk, and unit tests for the diagram parsers and layouts.
 
 <br />
 

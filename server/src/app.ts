@@ -1,12 +1,12 @@
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
-import mongoose from 'mongoose';
 import morgan from 'morgan';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from './config/env.js';
+import { isDatabaseUp } from './db/client.js';
 import { errorHandler, notFound } from './middleware/error.js';
 import { aiRoutes } from './routes/ai.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
@@ -26,8 +26,8 @@ export function createApp() {
   app.use(express.json({ limit: '200kb' }));
   if (!env.isTest) app.use(morgan(env.isProduction ? 'combined' : 'dev'));
 
-  app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', database: mongoose.connection.readyState === 1 ? 'up' : 'down' });
+  app.get('/api/health', async (_req, res) => {
+    res.json({ status: 'ok', database: (await isDatabaseUp()) ? 'up' : 'down' });
   });
   app.use('/api/auth', authRoutes);
   app.use('/api/ai', aiRoutes);
