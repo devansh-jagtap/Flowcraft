@@ -1,6 +1,5 @@
 import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import type { DiagramDraft, GeneratedDiagram } from '../../api/types';
-import { useAiEnabled } from '../../hooks/useAiEnabled';
 import { parseDiagram } from '../../lib/diagram/parse';
 import { BLANK_SOURCE, TYPE_GROUPS, TYPE_INFO } from '../../lib/diagram/templates';
 import type { DiagramType, Direction } from '../../lib/diagram/types';
@@ -29,9 +28,8 @@ const MAX_PROMPTS = 50;
 
 /** The editor UI shared by saved diagrams and the guest playground. */
 export default function Workspace({ draft, onChange, status, actions }: Props) {
-  const aiEnabled = useAiEnabled();
-  const [tab, setTab] = useState<'ai' | 'text'>();
-  const activeTab = tab ?? (aiEnabled === false ? 'text' : 'ai');
+  // AI stays the default tab even without free generations: that's where visitors add their own key.
+  const [activeTab, setTab] = useState<'ai' | 'text'>('ai');
   // Snapshots taken before each AI change, so a bad suggestion is one click to revert.
   const [undoStack, setUndoStack] = useState<DiagramDraft[]>([]);
 

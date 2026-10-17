@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkSource } from '../src/ai/checkSource.js';
 import { generateDiagram, normalise } from '../src/ai/diagramGenerator.js';
 import { env } from '../src/config/env.js';
-import { api } from './helpers.js';
+import { api, signUp } from './helpers.js';
 
 const FLOW = {
   title: 'Login flow',
@@ -122,6 +122,8 @@ describe('generateDiagram', () => {
 describe('AI routes', () => {
   const originalKey = env.gemini.apiKey;
   const originalGatewayKey = env.aiGateway.apiKey;
+  const originalLimit = env.freeAi.limit;
+  const setLimit = (limit: number) => ((env.freeAi as { limit: number }).limit = limit);
   let fetchMock: ReturnType<typeof vi.fn>;
   const realFetch = globalThis.fetch;
 
@@ -131,7 +133,7 @@ describe('AI routes', () => {
     fetchMock = vi.fn();
     // Only intercept calls to the AI providers; supertest talks to the app directly.
     globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) =>
-      String(input).startsWith(env.gemini.baseUrl) || String(input).startsWith(env.aiGateway.baseUrl)
+      [env.gemini.baseUrl, env.aiGateway.baseUrl, env.openai.baseUrl].some((base) => String(input).startsWith(base))
         ? fetchMock(input, init)
         : realFetch(input, init)) as typeof fetch;
   });
@@ -139,19 +141,24 @@ describe('AI routes', () => {
   afterEach(() => {
     (env.gemini as { apiKey: string }).apiKey = originalKey;
     (env.aiGateway as { apiKey: string }).apiKey = originalGatewayKey;
+    setLimit(originalLimit);
     globalThis.fetch = realFetch;
   });
 
-  it('reports whether AI is configured', async () => {
-    expect((await api().get('/api/ai/status').expect(200)).body).toEqual({ enabled: true });
+  it('reports whether AI is configured and how many free generations are left', async () => {
+    expect((await api().get('/api/ai/status').expect(200)).body).toEqual({
+      enabled: true,
+      free: { limit: env.freeAi.limit, remaining: env.freeAi.limit, resetsAt: null },
+    });
     (env.gemini as { apiKey: string }).apiKey = '';
-    expect((await api().get('/api/ai/status').expect(200)).body).toEqual({ enabled: false });
+    expect((await api().get('/api/ai/status').expect(200)).body).toEqual({ enabled: false, free: null });
   });
 
   it('returns 503 with setup instructions when no key is set', async () => {
     (env.gemini as { apiKey: string }).apiKey = '';
     const res = await api().post('/api/ai/generate').send({ prompt: 'how tea is made' }).expect(503);
     expect(res.body.error.message).toMatch(/GEMINI_API_KEY/);
+    expect(res.body.error.code).toBe('AI_KEY_REQUIRED');
   });
 
   it('validates the prompt', async () => {
@@ -185,6 +192,104 @@ describe('AI routes', () => {
     await api().post('/api/ai/generate').send({ prompt: 'something blocked' }).expect(400);
   });
 
+  describe('free quota on the server key', () => {
+    beforeEach(() => setLimit(2));
+
+    it('counts down and then asks for an own key', async () => {
+      fetchMock.mockImplementation(async () => geminiReply(FLOW));
+      const first = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(200);
+      expect(first.body.free).toMatchObject({ limit: 2, remaining: 1 });
+      const second = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(200);
+      expect(second.body.free.remaining).toBe(0);
+
+      const res = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(429);
+      expect(res.body.error.code).toBe('AI_FREE_LIMIT');
+      expect(res.body.error.message).toMatch(/2 free AI generations today/);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect((await api().get('/api/ai/status').expect(200)).body.free).toMatchObject({ remaining: 0, resetsAt: expect.any(String) });
+    });
+
+    it('gives a failed generation back', async () => {
+      fetchMock.mockResolvedValue(new Response('boom', { status: 500 }));
+      await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(502);
+      expect((await api().get('/api/ai/status').expect(200)).body.free.remaining).toBe(2);
+    });
+
+    it('counts signed-in users separately from guests on the same IP', async () => {
+      fetchMock.mockImplementation(async () => geminiReply(FLOW));
+      setLimit(1);
+      await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(200);
+      await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(429);
+
+      const { auth } = await signUp();
+      expect((await api().get('/api/ai/status').set(auth).expect(200)).body.free.remaining).toBe(1);
+      await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow' }).expect(200);
+      await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow' }).expect(429);
+    });
+
+    it('requires an own key when the free tier is turned off', async () => {
+      setLimit(0);
+      const res = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(402);
+      expect(res.body.error.code).toBe('AI_KEY_REQUIRED');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("with the visitor's own key", () => {
+    const own = (provider: string, key = 'my-own-key-123', model?: string) => ({
+      'X-AI-Provider': provider,
+      'X-AI-Key': key,
+      ...(model && { 'X-AI-Model': model }),
+    });
+
+    it('calls Gemini with their key and skips the free quota', async () => {
+      setLimit(0);
+      fetchMock.mockResolvedValue(geminiReply(FLOW));
+      const res = await api().post('/api/ai/generate').set(own('gemini', 'my-own-key-123', 'gemini-2.5-pro')).send({ prompt: 'login flow' }).expect(200);
+
+      expect(res.body).toEqual({ diagram: FLOW });
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(String(url)).toBe(`${env.gemini.baseUrl}/models/gemini-2.5-pro:generateContent`);
+      expect(init.headers['x-goog-api-key']).toBe('my-own-key-123');
+    });
+
+    it('works even when the server has no key', async () => {
+      (env.gemini as { apiKey: string }).apiKey = '';
+      fetchMock.mockResolvedValue(gatewayReply(FLOW));
+      await api().post('/api/ai/generate').set(own('gateway')).send({ prompt: 'login flow' }).expect(200);
+      expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer my-own-key-123');
+    });
+
+    it('calls OpenAI chat completions with the default model and no temperature', async () => {
+      fetchMock.mockResolvedValue(gatewayReply(FLOW));
+      await api().post('/api/ai/generate').set(own('openai', 'sk-own-1234567')).send({ prompt: 'login flow' }).expect(200);
+
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(String(url)).toBe(`${env.openai.baseUrl}/chat/completions`);
+      expect(init.headers.Authorization).toBe('Bearer sk-own-1234567');
+      const body = JSON.parse(init.body);
+      expect(body.model).toBe(env.openai.model);
+      expect(body.temperature).toBeUndefined();
+    });
+
+    it('explains key problems without blaming the server', async () => {
+      fetchMock.mockResolvedValueOnce(new Response('{"error":{"message":"Incorrect API key"}}', { status: 401 }));
+      let res = await api().post('/api/ai/generate').set(own('openai')).send({ prompt: 'login flow' }).expect(400);
+      expect(res.body.error).toEqual({ code: 'AI_KEY_INVALID', message: 'Your OpenAI API key was rejected. Check it and try again.' });
+
+      fetchMock.mockResolvedValueOnce(new Response('{"error":{"message":"Model not found"}}', { status: 404 }));
+      res = await api().post('/api/ai/generate').set(own('gemini', 'my-own-key-123', 'gemini-9')).send({ prompt: 'login flow' }).expect(400);
+      expect(res.body.error.message).toMatch(/couldn't find the model "gemini-9"/);
+    });
+
+    it('validates the key headers', async () => {
+      await api().post('/api/ai/generate').set(own('anthropic')).send({ prompt: 'login flow' }).expect(400);
+      await api().post('/api/ai/generate').set(own('gemini', 'short')).send({ prompt: 'login flow' }).expect(400);
+      await api().post('/api/ai/generate').set(own('gemini', 'my-own-key-123', '../../evil')).send({ prompt: 'login flow' }).expect(400);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
   describe('via Vercel AI Gateway', () => {
     beforeEach(() => {
       (env.aiGateway as { apiKey: string }).apiKey = 'gw-key';
@@ -192,7 +297,7 @@ describe('AI routes', () => {
 
     it('is preferred over Gemini and enables AI on its own', async () => {
       (env.gemini as { apiKey: string }).apiKey = '';
-      expect((await api().get('/api/ai/status').expect(200)).body).toEqual({ enabled: true });
+      expect((await api().get('/api/ai/status').expect(200)).body).toMatchObject({ enabled: true });
     });
 
     it('calls chat completions with a strict JSON schema and returns the diagram', async () => {

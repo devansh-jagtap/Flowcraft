@@ -20,6 +20,11 @@ services:
       PORT: 5000
       MONGODB_URI: mongodb://mongo:27017/flowcraft
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_FREE_LIMIT: ${AI_FREE_LIMIT:-5}
+      # Nothing sits in front of the container locally, so trust no proxy headers.
+      TRUST_PROXY: "false"
       CLIENT_ORIGIN: http://localhost:5000
     ports:
       - "5000:5000"

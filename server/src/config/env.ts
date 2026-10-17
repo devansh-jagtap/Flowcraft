@@ -1,6 +1,14 @@
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const isProduction = nodeEnv === 'production';
 
+/** Express "trust proxy": hop count, true/false, or a list of addresses. Needed for real visitor IPs behind a proxy. */
+function trustProxy(value = process.env.TRUST_PROXY): boolean | number | string {
+  if (!value) return isProduction ? 1 : false;
+  if (/^\d+$/.test(value)) return Number(value);
+  if (value === 'true' || value === 'false') return value === 'true';
+  return value;
+}
+
 export const env = {
   nodeEnv,
   isProduction,
@@ -19,11 +27,22 @@ export const env = {
     model: process.env.AI_GATEWAY_MODEL ?? 'google/gemini-2.5-flash',
     baseUrl: process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1',
   },
+  openai: {
+    // Only used with a visitor's own OpenAI key (bring your own key).
+    model: process.env.OPENAI_MODEL ?? 'gpt-4.1-mini',
+    baseUrl: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
+  },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
     model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
     // Overridable so tests and local demos can point at a fake server.
     baseUrl: process.env.GEMINI_BASE_URL ?? 'https://generativelanguage.googleapis.com/v1beta',
   },
+  freeAi: {
+    // Generations each visitor gets on the server's key per window. After that they need their own key. 0 = own keys only.
+    limit: Math.max(0, Number(process.env.AI_FREE_LIMIT ?? 5) || 0),
+    windowHours: Math.max(1, Number(process.env.AI_FREE_WINDOW_HOURS ?? 24) || 24),
+  },
+  trustProxy: trustProxy(),
   clientOrigins: (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173').split(',').map((o) => o.trim()),
 } as const;

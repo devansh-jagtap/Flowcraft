@@ -75,6 +75,15 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   next();
 }
 
+/** Like requireAuth, but lets guests through. A missing, invalid or expired token means "guest". */
+export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  const token = bearerToken(req);
+  const canVerify = env.isTest || Boolean(env.clerk.secretKey || env.clerk.jwtKey);
+  const clerkId = token && canVerify ? await clerkIdFromToken(token) : null;
+  if (clerkId) req.user = await userForClerkId(clerkId);
+  next();
+}
+
 /** Helper for handlers mounted behind requireAuth. */
 export function currentUser(req: Request): UserDocument {
   if (!req.user) throw HttpError.unauthorized();

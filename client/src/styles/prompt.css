@@ -197,3 +197,54 @@
   min-height: 36px;
   font-size: 13px;
 }
+
+/* ---------- Free generations and own API key ---------- */
+.ai-usage {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.prompt-hero .ai-usage {
+  text-align: center;
+}
+
+.ai-notice {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.ai-notice p {
+  margin: 0;
+}
+
+.ai-key-form .segmented {
+  justify-self: start;
+}
+
+.field {
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+}
+
+.field > span {
+  font-weight: 500;
+}
+
+.field small {
+  font-size: 12px;
+}
+
+.ai-key-privacy {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.ai-key-remove {
+  margin-right: auto;
+  color: var(--danger);
+}
