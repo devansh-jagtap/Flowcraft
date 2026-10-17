@@ -101,18 +101,28 @@ function providerMessage(detail: string): string {
   return 'unknown error';
 }
 
-/** POSTs JSON with a timeout, turning network failures into friendly HttpErrors. */
+// Provider-side hiccups (Gemini's "model is overloaded" 503 is common) usually pass within a second.
+const RETRY_STATUSES = new Set([500, 502, 503, 504]);
+const retryDelayMs = () => (env.isTest ? 0 : 1000);
+
+/** POSTs JSON with a timeout, retrying once on a provider 5xx and turning network failures into friendly HttpErrors. */
 export async function postJson(url: string, headers: Record<string, string>, body: unknown): Promise<Response> {
-  try {
-    return await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      signal: AbortSignal.timeout(45_000),
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    const timedOut = (err as Error).name === 'TimeoutError';
-    throw new HttpError(504, timedOut ? 'The AI took too long to answer. Please try again.' : 'Could not reach the AI service.');
+  for (let attempt = 1; ; attempt += 1) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        signal: AbortSignal.timeout(45_000),
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      const timedOut = (err as Error).name === 'TimeoutError';
+      throw new HttpError(504, timedOut ? 'The AI took too long to answer. Please try again.' : 'Could not reach the AI service.');
+    }
+    if (attempt > 1 || !RETRY_STATUSES.has(res.status)) return res;
+    await res.body?.cancel();
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs()));
   }
 }
 

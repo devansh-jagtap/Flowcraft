@@ -181,6 +181,18 @@ describe('AI routes', () => {
     expect(body.contents[0].parts[0].text).toBe('login flow for an app');
   });
 
+  it('retries once when the provider has a temporary server error', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('{"error":{"message":"The model is overloaded."}}', { status: 503 })).mockResolvedValueOnce(geminiReply(FLOW));
+    const res = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(200);
+    expect(res.body.diagram).toEqual(FLOW);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // A second failure in a row is reported, not retried forever.
+    fetchMock.mockReset().mockResolvedValue(new Response('down', { status: 503 }));
+    await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(502);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('maps Gemini rate limits to a friendly 429', async () => {
     fetchMock.mockResolvedValue(new Response('quota', { status: 429 }));
     const res = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(429);
