@@ -32,18 +32,42 @@ export function setDb(next: Db | undefined) {
  */
 export async function connectDB() {
   if (!env.databaseUrl) throw new Error('DATABASE_URL is not set (run `neon deploy` or see server/.env.example)');
-  await runMigrations();
+  await withRetry(runMigrations);
 
-  pool = new pg.Pool({ connectionString: env.databaseUrl, max: 10, idleTimeoutMillis: 30_000 });
+  pool = new pg.Pool({ connectionString: strictSsl(env.databaseUrl), max: 10, idleTimeoutMillis: 30_000 });
   // An idle client can be dropped when Neon scales to zero; log it instead of crashing the process.
   pool.on('error', (err) => console.error('Postgres pool error:', err.message));
   setDb(drizzle(pool, { schema }));
-  await db().execute(sql`select 1`);
+  await withRetry(() => db().execute(sql`select 1`));
+}
+
+/**
+ * Neon's URLs say `sslmode=require`, which node-postgres already treats as `verify-full` (certificate and
+ * host checked) but warns will change meaning in pg v9. Spelling out verify-full keeps today's behaviour
+ * and silences the warning.
+ */
+const strictSsl = (url: string) => url.replace(/([?&])sslmode=(prefer|require|verify-ca)\b/, '$1sslmode=verify-full');
+
+// Network blips worth retrying at startup: a DNS lookup that fails once, or a connection cut while Neon wakes up.
+const TRANSIENT = new Set(['ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE']);
+
+async function withRetry<T>(task: () => Promise<T>, attempts = 5): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await task();
+    } catch (err) {
+      const code = (err as { code?: string; cause?: { code?: string } }).code ?? (err as { cause?: { code?: string } }).cause?.code;
+      if (attempt >= attempts || !code || !TRANSIENT.has(code)) throw err;
+      const delay = 1000 * 2 ** (attempt - 1);
+      console.warn(`Database not reachable (${code}), retrying in ${delay / 1000}s (attempt ${attempt + 1} of ${attempts})`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
 }
 
 /** Applies pending migrations over a direct (unpooled) connection, as Neon recommends. */
 async function runMigrations() {
-  const client = new pg.Client({ connectionString: env.databaseUrlUnpooled || env.databaseUrl });
+  const client = new pg.Client({ connectionString: strictSsl(env.databaseUrlUnpooled || env.databaseUrl) });
   await client.connect();
   try {
     await migrate(drizzle(client), { migrationsFolder });
