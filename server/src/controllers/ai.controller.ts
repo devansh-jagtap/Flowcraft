@@ -14,6 +14,7 @@ import {
 import { freeUsage, refundFreeGeneration, reserveFreeGeneration } from '../ai/quota.js';
 import { recordUsage, usageSummary } from '../ai/usageLog.js';
 import { HttpError } from '../lib/HttpError.js';
+import { currentUser } from '../middleware/auth.js';
 import { parse } from '../lib/validate.js';
 import { generateSchema, ownKeySchema } from '../validators/ai.schemas.js';
 
@@ -39,12 +40,15 @@ export async function status(req: Request, res: Response) {
   res.json({ enabled, free: enabled ? await freeUsage(quotaKey(req)) : null, freeTier: freeTier() });
 }
 
+/**
+ * Usage history is private to an account. Guests are never shown it: many people can share one
+ * network address (an office, a campus Wi-Fi, a mobile carrier), so it would show them each other's activity.
+ */
 export async function usage(req: Request, res: Response) {
-  const subject = quotaKey(req);
-  const enabled = isAiConfigured();
+  const user = currentUser(req);
+  const subject = `user:${user.id}`;
   res.json({
-    signedIn: Boolean(req.user),
-    free: enabled ? await freeUsage(subject) : null,
+    free: isAiConfigured() ? await freeUsage(subject) : null,
     freeTier: freeTier(),
     ...(await usageSummary(subject)),
   });
@@ -68,18 +72,21 @@ async function generateLogged(req: Request, credentials: AiCredentials, request:
       credentials
     );
 
-  const log = (ok: boolean, errorCode?: string) =>
-    recordUsage({
-      subject: quotaKey(req),
+  // Only signed-in users have a usage history; guests' generations are not recorded.
+  const user = req.user;
+  const log = async (ok: boolean, errorCode?: string) => {
+    if (!user) return;
+    await recordUsage({
+      subject: `user:${user.id}`,
       credentials,
       ok,
       errorCode,
       calls,
       tokens,
       durationMs: performance.now() - started,
-      // Guests can share an IP address, so their prompts are not kept.
-      prompt: req.user ? request.prompt : undefined,
+      prompt: request.prompt,
     });
+  };
 
   try {
     const diagram = await generateDiagram(request, generate);

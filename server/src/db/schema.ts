@@ -72,7 +72,7 @@ export const aiEvents = pgTable(
   'ai_events',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
-    /** Same as ai_usage.key: "user:<id>" or "ip:<address>". */
+    /** "user:<id>". Only signed-in users' generations are recorded. */
     subject: text('subject').notNull(),
     /** "free" for the server's key, "own" for the visitor's key. */
     source: text('source').$type<'free' | 'own'>().notNull(),
@@ -85,7 +85,7 @@ export const aiEvents = pgTable(
     inputTokens: integer('input_tokens').notNull().default(0),
     outputTokens: integer('output_tokens').notNull().default(0),
     durationMs: integer('duration_ms').notNull().default(0),
-    /** Start of the prompt, kept only for signed-in users (guests can share an IP). */
+    /** Start of the prompt, shown in the user's activity list. */
     prompt: varchar('prompt', { length: 120 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

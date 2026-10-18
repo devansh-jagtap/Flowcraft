@@ -409,10 +409,6 @@
   margin: 0;
 }
 
-.usage-note {
-  margin: 14px 0 0;
-}
-
 /* Daily bars: one hue, 4px rounded tops on the baseline, 2px gaps between bars. */
 .daily-chart figcaption {
   display: flex;
@@ -575,5 +571,49 @@
 
   .current-source {
     flex-wrap: wrap;
+  }
+}
+
+/* Shown to guests in place of usage numbers. */
+.usage-signed-out {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.usage-signed-out > svg {
+  flex: none;
+  font-size: 30px;
+  color: var(--primary);
+}
+
+.usage-signed-out h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.usage-signed-out p {
+  max-width: 40em;
+  margin: 0;
+  font-size: 13px;
+}
+
+.usage-signed-out-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .usage-signed-out {
+    flex-wrap: wrap;
+  }
+
+  .usage-signed-out-actions {
+    margin-left: 0;
   }
 }

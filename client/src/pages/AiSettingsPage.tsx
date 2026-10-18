@@ -1,4 +1,5 @@
-import { CheckCircle, WarningCircle } from '@phosphor-icons/react';
+import { SignInButton, SignUpButton } from '@clerk/react';
+import { ChartBar, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { aiApi, useUsageVersion, type AiUsage } from '../api/ai';
@@ -28,9 +29,10 @@ const providerLabel = (provider: string) => PROVIDERS[provider as keyof typeof P
 
 /** AI keys and usage: which key draws diagrams, each provider's key, and what has been used. */
 export default function AiSettingsPage() {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const usageVersion = useUsageVersion();
-  const usage = useAsync((signal) => aiApi.usage(signal), [usageVersion, user?.id]);
+  // Usage history belongs to an account, so guests never request it.
+  const usage = useAsync((signal) => (user ? aiApi.usage(signal) : Promise.resolve(null)), [usageVersion, user?.id]);
 
   return (
     <div className="page container ai-page">
@@ -48,9 +50,13 @@ export default function AiSettingsPage() {
       <section className="usage-section" aria-labelledby="usage-title">
         <div className="usage-head">
           <h2 id="usage-title">Usage</h2>
-          <span className="muted small">Last {usage.data?.windowDays ?? 30} days</span>
+          {user && <span className="muted small">Last {usage.data?.windowDays ?? 30} days</span>}
         </div>
-        {usage.error ? (
+        {!ready ? (
+          <Spinner />
+        ) : !user ? (
+          <SignedOutUsage />
+        ) : usage.error ? (
           <ErrorState error={usage.error} onRetry={usage.reload} />
         ) : !usage.data ? (
           <Spinner />
@@ -64,7 +70,7 @@ export default function AiSettingsPage() {
 
 /** A one-line summary of what the next generation will use. */
 function CurrentSource() {
-  const { ownKey, free, freeTier, reason } = useAiStatus();
+  const { ownKey, free, freeTier } = useAiStatus();
   let text: string;
   if (ownKey) text = `Your ${PROVIDERS[ownKey.provider].label} key · ${ownKey.model || PROVIDERS[ownKey.provider].defaultModel}`;
   else if (freeTier && free) text = `Free generations · ${freeSummary(free)}`;
@@ -76,7 +82,6 @@ function CurrentSource() {
       {ok ? <CheckCircle weight="fill" aria-hidden /> : <WarningCircle weight="fill" aria-hidden />}
       <span>
         <strong>New diagrams use:</strong> {text}
-        {!ok && reason === 'free-used' && free?.resetsAt && ` (more ${resetsIn(free.resetsAt)})`}
       </span>
       <Link to="/try" className="btn btn-secondary btn-sm">
         Open editor
@@ -132,13 +137,31 @@ function UsageReport({ usage }: { usage: AiUsage }) {
         </>
       )}
 
-      {!usage.signedIn && (
-        <p className="muted small usage-note">
-          As a guest, usage is counted for your network address. <Link to="/register">Sign up</Link> to keep it with your account; prompts
-          are only shown in the activity list when you're signed in.
-        </p>
-      )}
     </>
+  );
+}
+
+/** Guests see an invitation instead: their usage isn't recorded, since many people can share one address. */
+function SignedOutUsage() {
+  return (
+    <div className="usage-signed-out">
+      <ChartBar aria-hidden />
+      <div>
+        <h3>Sign in to see your usage</h3>
+        <p className="muted">
+          Your account keeps a private history of your AI generations: tokens per provider and model, a daily chart and recent activity.
+          Usage isn't recorded while you're signed out.
+        </p>
+      </div>
+      <div className="usage-signed-out-actions">
+        <SignInButton>
+          <button className="btn btn-secondary">Log in</button>
+        </SignInButton>
+        <SignUpButton>
+          <button className="btn btn-primary">Sign up</button>
+        </SignUpButton>
+      </div>
+    </div>
   );
 }
 

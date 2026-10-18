@@ -51,7 +51,6 @@ export interface UsageEvent {
 }
 
 export interface AiUsage {
-  signedIn: boolean;
   free: FreeUsage | null;
   freeTier: FreeTier | null;
   windowDays: number;

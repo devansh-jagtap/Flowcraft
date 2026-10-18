@@ -335,7 +335,6 @@ describe('AI routes', () => {
         .expect(400);
 
       const res = await api().get('/api/ai/usage').set(auth).expect(200);
-      expect(res.body.signedIn).toBe(true);
       expect(res.body.free).toMatchObject({ limit: env.freeAi.limit, remaining: env.freeAi.limit - 1 });
       expect(res.body.byModel).toEqual(
         expect.arrayContaining([
@@ -349,23 +348,30 @@ describe('AI routes', () => {
       expect(res.body.recent[0]).toMatchObject({ provider: 'openai', ok: false, errorCode: 'AI_KEY_INVALID', prompt: 'signup flow' });
     });
 
-    it("keeps usage separate per visitor and doesn't store guests' prompts", async () => {
+    it("never records or shows guests' usage, since many people can share an address", async () => {
       fetchMock.mockResolvedValue(geminiReply(FLOW));
       await api().post('/api/ai/generate').send({ prompt: 'a guest prompt' }).expect(200);
+      await api().get('/api/ai/usage').expect(401);
 
-      const guest = await api().get('/api/ai/usage').expect(200);
-      expect(guest.body.signedIn).toBe(false);
-      expect(guest.body.recent).toHaveLength(1);
-      expect(guest.body.recent[0].prompt).toBeNull();
-
+      // Not recorded under any account either: a new user starts with an empty history.
       const { auth } = await signUp();
       expect((await api().get('/api/ai/usage').set(auth).expect(200)).body.recent).toEqual([]);
+    });
+
+    it("keeps each account's usage to itself", async () => {
+      fetchMock.mockResolvedValue(geminiReply(FLOW));
+      const alice = await signUp({ name: 'Alice' });
+      const bob = await signUp({ name: 'Bob' });
+      await api().post('/api/ai/generate').set(alice.auth).send({ prompt: 'alice prompt' }).expect(200);
+
+      expect((await api().get('/api/ai/usage').set(alice.auth).expect(200)).body.recent).toHaveLength(1);
+      expect((await api().get('/api/ai/usage').set(bob.auth).expect(200)).body.recent).toEqual([]);
     });
   });
 
   describe('testing an own key', () => {
     it('checks the key and model with a tiny request', async () => {
-      fetchMock.mockResolvedValue(gatewayReply({ ok: true }));
+      fetchMock.mockImplementation(async () => gatewayReply({ ok: true }));
       const res = await api()
         .post('/api/ai/test-key')
         .set({ 'X-AI-Provider': 'openai', 'X-AI-Key': 'sk-own-1234567', 'X-AI-Model': 'gpt-4.1-nano' })
@@ -373,7 +379,9 @@ describe('AI routes', () => {
       expect(res.body).toMatchObject({ ok: true, provider: 'openai', model: 'gpt-4.1-nano', latencyMs: expect.any(Number) });
       expect(JSON.parse(fetchMock.mock.calls[0][1].body).response_format.json_schema.schema.properties.ok.type).toBe('boolean');
       // A test is not a generation, so it isn't logged.
-      expect((await api().get('/api/ai/usage').expect(200)).body.recent).toEqual([]);
+      const { auth } = await signUp();
+      await api().post('/api/ai/test-key').set({ ...auth, 'X-AI-Provider': 'openai', 'X-AI-Key': 'sk-own-1234567' }).expect(200);
+      expect((await api().get('/api/ai/usage').set(auth).expect(200)).body.recent).toEqual([]);
     });
 
     it('reports a rejected key and needs a key to test', async () => {
