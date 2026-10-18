@@ -2,7 +2,7 @@ import { CheckCircle, Eye, EyeSlash, Gift, Key, WarningCircle } from '@phosphor-
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { aiApi, type FreeUsage } from '../../api/ai';
+import { aiApi } from '../../api/ai';
 import { ApiError } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useAiStatus } from '../../hooks/useAiEnabled';
@@ -18,21 +18,11 @@ import {
   type AiProvider,
 } from '../../lib/aiKey';
 import { timeAgo } from '../../lib/format';
+import { freeSummary, resetsIn } from '../../lib/freeUsage';
 import { Modal } from '../ui';
 
-/** "in 3 h" / "in 12 min" until the free generations come back. */
-export function resetsIn(resetsAt: string | null) {
-  if (!resetsAt) return '';
-  const minutes = Math.max(1, Math.round((new Date(resetsAt).getTime() - Date.now()) / 60_000));
-  return minutes >= 60 ? `in ${Math.round(minutes / 60)} h` : `in ${minutes} min`;
-}
-
-export function freeSummary(free: FreeUsage) {
-  if (free.limit === 0) return 'No free generations on this site';
-  if (free.remaining > 0) return `${free.remaining} of ${free.limit} free generation${free.limit === 1 ? '' : 's'} left`;
-  const reset = resetsIn(free.resetsAt);
-  return `Free generations used up${reset ? `, more ${reset}` : ''}`;
-}
+/** "an OpenAI key", "a Gemini key". */
+const withArticle = (label: string) => `${/^[aeiou]/i.test(label) ? 'an' : 'a'} ${label}`;
 
 /** Add or edit one provider's key. Testing first catches wrong keys and model names before they fail a drawing. */
 function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => void }) {
@@ -98,7 +88,7 @@ function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => voi
         <div className="key-hint warn">
           <WarningCircle aria-hidden weight="fill" />
           <span>
-            This looks like a {PROVIDERS[mismatch].label} key.{' '}
+            This looks like {withArticle(PROVIDERS[mismatch].label)} key.{' '}
             <button type="button" className="link-btn" onClick={() => save(false, mismatch)}>
               Save it under {PROVIDERS[mismatch].label}
             </button>
@@ -138,7 +128,7 @@ function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => voi
 
       <div className="key-form-actions">
         <a href={info.keyUrl} target="_blank" rel="noreferrer" className="small">
-          Get a {info.label} key
+          Get {withArticle(info.label)} key
         </a>
         <span className="spacer" />
         <button type="button" className="btn btn-ghost btn-sm" onClick={onDone}>

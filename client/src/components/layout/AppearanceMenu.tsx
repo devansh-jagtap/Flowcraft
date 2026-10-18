@@ -1,4 +1,4 @@
-import { CaretDown, Check, CircleHalf, Moon, Sun, type Icon } from '@phosphor-icons/react';
+import { Check, CircleHalf, Moon, Sun, type Icon } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useThemePreference, type ThemePreference } from '../../lib/theme';
 
@@ -53,15 +53,14 @@ export default function AppearanceMenu() {
     <div className="appearance" ref={rootRef}>
       <button
         ref={buttonRef}
-        className="nav-btn"
+        className="nav-btn nav-btn-icon"
+        title={`Appearance: ${current.label}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Appearance: ${current.label}`}
         onClick={() => setOpen((o) => !o)}
       >
-        <current.icon aria-hidden />
-        <span className="nav-label">{current.label}</span>
-        <CaretDown className="nav-caret" size={11} weight="bold" aria-hidden />
+        <current.icon aria-hidden size={17} />
       </button>
       {open && (
         <div className="appearance-menu" role="menu" aria-label="Appearance" onKeyDown={onMenuKeyDown}>

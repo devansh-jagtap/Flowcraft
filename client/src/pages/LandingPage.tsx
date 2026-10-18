@@ -127,7 +127,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="types container">
+      <section className="types container" id="types">
         <h2 className="section-title">Eight kinds of diagram. One way to write them.</h2>
         <p className="section-lead">Flowcharts and mind maps for ideas, ER and UML diagrams for software. Pick one, or let the AI choose.</p>
         <div className="bento">
@@ -149,7 +149,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="how container">
+      <section className="how container" id="how">
         <h2 className="section-title how-title">From a sentence to a diagram</h2>
         <ol className="steps">
           {STEPS.map(([title, text]) => (

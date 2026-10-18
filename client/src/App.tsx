@@ -8,6 +8,7 @@ import LandingPage from './pages/LandingPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // The canvas-heavy pages are split into their own chunks.
+const AiSettingsPage = lazy(() => import('./pages/AiSettingsPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 const PlaygroundPage = lazy(() => import('./pages/PlaygroundPage'));
@@ -36,6 +37,8 @@ export default function App() {
         <Route index element={<LandingPage />} />
         <Route path="login/*" element={<AuthPage mode="login" />} />
         <Route path="register/*" element={<AuthPage mode="register" />} />
+        {/* Open to guests too: keys live in the browser and guest usage is counted per network address. */}
+        <Route path="ai" element={<AiSettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
