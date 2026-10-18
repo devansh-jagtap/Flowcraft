@@ -128,7 +128,7 @@
   width: min(460px, calc(100vw - 32px));
   padding: 0;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: var(--radius-xl);
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-lg);
@@ -150,11 +150,13 @@
 }
 
 .modal::backdrop {
-  background: rgba(29, 29, 31, 0.25);
+  background: rgba(29, 29, 31, 0.22);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
 }
 
 .modal-inner {
-  padding: 20px 24px 24px;
+  padding: 22px 24px 24px;
 }
 
 .modal-header {
