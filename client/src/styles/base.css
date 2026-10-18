@@ -239,6 +239,13 @@ code {
   text-decoration: none;
 }
 
+/* Without the section links, a separator divides the logo from the actions. */
+.navbar:not(.navbar-landing) .logo {
+  margin-right: 6px;
+  padding-right: 14px;
+  border-right: 0.5px solid var(--border-strong);
+}
+
 .logo-mark {
   width: 26px;
   height: 26px;

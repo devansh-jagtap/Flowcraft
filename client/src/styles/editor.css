@@ -99,23 +99,34 @@
   flex-shrink: 0;
   margin: 12px 14px 0;
   padding: 2px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .side-tabs button {
-  height: 22px;
+  height: 24px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 999px;
   background: none;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 500;
   cursor: default;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.side-tabs button:hover:not(.active) {
+  color: var(--text);
 }
 
 .side-tabs button.active {
-  background: var(--surface);
-  box-shadow: var(--control-shadow);
+  background: var(--button);
+  color: var(--text);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.14);
 }
 
 /* ---------- Text editor ---------- */
