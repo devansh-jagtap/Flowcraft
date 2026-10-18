@@ -296,7 +296,16 @@ The API tests run against an in-memory Postgres (PGlite) with the real migration
 
 ### Production
 
-Build with `VITE_CLERK_PUBLISHABLE_KEY` set, then run `npm start` with `NODE_ENV=production`, `CLERK_SECRET_KEY`, `CLIENT_ORIGIN`, `DATABASE_URL` and `DATABASE_URL_UNPOOLED`. Pending migrations are applied when the API starts. Express serves the built React app, so everything runs as one service on port 5000.
+Live at **https://flowcraft-eight.vercel.app**, deployed on Vercel from `main`: every push to `main` builds and deploys automatically.
+
+How it runs on Vercel (`vercel.json`):
+
+- The React build (`client/dist`) is served from Vercel's CDN; other paths fall back to `index.html`, so links like `/d/:id` work.
+- `/api/*` goes to one Vercel Function, `api/index.mjs`, which wraps the same Express app.
+- Pending database migrations run once during the build (`npm run migrate -w server`), not when functions start.
+- Production environment variables are set in the Vercel project: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` (read at build time), `AI_KEYS_SECRET`, an AI key (`GEMINI_API_KEY` or `AI_GATEWAY_API_KEY`) and `CLIENT_ORIGIN` (the production addresses). Change one with `vercel env add NAME production --force`, then redeploy.
+
+To run it anywhere else as a single Node server, build with `VITE_CLERK_PUBLISHABLE_KEY` set, then run `npm start` with `NODE_ENV=production`, `CLERK_SECRET_KEY`, `CLIENT_ORIGIN`, `DATABASE_URL` and `DATABASE_URL_UNPOOLED`. Pending migrations are applied when the API starts. Express serves the built React app, so everything runs as one service on port 5000.
 
 After changing `server/src/db/schema.ts`, run `npm run db:generate -w server` and commit the new file in `server/drizzle`.
 
