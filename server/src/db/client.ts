@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { attachDatabasePool } from '@vercel/functions';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
@@ -27,16 +28,20 @@ export function setDb(next: Db | undefined) {
 }
 
 /**
- * Connects to Postgres (Neon) with a connection pool. The API is a long-running Node server, so
- * node-postgres over Neon's pooled DATABASE_URL is the right fit; migrations use the direct URL.
+ * Connects to Postgres (Neon) with a connection pool over Neon's pooled DATABASE_URL; migrations use the
+ * direct URL. A long-running server applies pending migrations here at startup. On Vercel they run once in
+ * the build instead (see src/migrate.ts), since many function instances can start at the same time.
  */
-export async function connectDB() {
+export async function connectDB({ migrate: runPending = true }: { migrate?: boolean } = {}) {
   if (!env.databaseUrl) throw new Error('DATABASE_URL is not set (run `neon deploy` or see server/.env.example)');
-  await withRetry(runMigrations);
+  if (runPending) await withRetry(runMigrations);
 
-  pool = new pg.Pool({ connectionString: strictSsl(env.databaseUrl), max: 10, idleTimeoutMillis: 30_000 });
+  const onVercel = Boolean(process.env.VERCEL);
+  pool = new pg.Pool({ connectionString: strictSsl(env.databaseUrl), max: onVercel ? 5 : 10, idleTimeoutMillis: 30_000 });
   // An idle client can be dropped when Neon scales to zero; log it instead of crashing the process.
   pool.on('error', (err) => console.error('Postgres pool error:', err.message));
+  // Lets Vercel close idle connections before a function instance is suspended, so none leak.
+  if (onVercel) attachDatabasePool(pool);
   setDb(drizzle(pool, { schema }));
   await withRetry(() => db().execute(sql`select 1`));
 }
@@ -66,7 +71,7 @@ async function withRetry<T>(task: () => Promise<T>, attempts = 5): Promise<T> {
 }
 
 /** Applies pending migrations over a direct (unpooled) connection, as Neon recommends. */
-async function runMigrations() {
+export async function runMigrations() {
   const client = new pg.Client({ connectionString: strictSsl(env.databaseUrlUnpooled || env.databaseUrl) });
   await client.connect();
   try {

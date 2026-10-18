@@ -10,11 +10,13 @@
     "start": "node --env-file-if-exists=../.env.local --env-file-if-exists=.env dist/server.js",
     "seed": "tsx --env-file-if-exists=../.env.local --env-file-if-exists=.env src/seed.ts",
     "db:generate": "drizzle-kit generate",
+    "migrate": "node --env-file-if-exists=../.env.local --env-file-if-exists=.env dist/migrate.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@clerk/express": "^2.1.78",
+    "@vercel/functions": "^3.10.1",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.45.4",
     "express": "^5.1.0",
