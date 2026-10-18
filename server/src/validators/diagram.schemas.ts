@@ -9,9 +9,10 @@ const fields = {
   source: z.string().max(MAX_SOURCE_LENGTH, 'Diagram text is too long'),
   theme: z.enum(DIAGRAM_THEMES),
   direction: z.enum(DIRECTIONS),
-  // Keys are node ids produced by the client-side parser; cap the size to keep documents small.
+  // Keys are node ids from the client-side parser. Mind maps and org charts use the node's path
+  // ("root/topic/subtopic/…"), which gets long in deep trees; the count cap keeps documents small.
   positions: z
-    .record(z.string().max(200), point)
+    .record(z.string().max(1000), point)
     .refine((p) => Object.keys(p).length <= 500, 'Too many node positions'),
   starred: z.boolean(),
   prompts: z

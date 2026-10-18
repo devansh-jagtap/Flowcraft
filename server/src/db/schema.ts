@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { bigserial, boolean, index, integer, jsonb, pgTable, text, timestamp, uuid, varchar, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { bigserial, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid, varchar, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { DiagramTheme, DiagramType, Direction } from '../models/constants.js';
 
 const timestamps = {
@@ -15,8 +15,28 @@ export const users = pgTable('users', {
   name: varchar('name', { length: 60 }).notNull(),
   // Stored lowercase. Postgres allows many NULLs in a unique column.
   email: text('email').unique(),
+  /** Which saved API key generates diagrams; null means the free generations. */
+  aiProvider: text('ai_provider').$type<'gemini' | 'openai' | 'gateway'>(),
   ...timestamps,
 });
+
+/** API keys users save to their account, encrypted (see lib/secretBox.ts). One per provider. */
+export const userAiKeys = pgTable(
+  'user_ai_keys',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').$type<'gemini' | 'openai' | 'gateway'>().notNull(),
+    encryptedKey: text('encrypted_key').notNull(),
+    /** Masked form, e.g. "sk-p…a1b2", so the key is recognisable without decrypting it. */
+    keyHint: text('key_hint').notNull(),
+    model: text('model'),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.provider] })]
+);
 
 export interface Point {
   x: number;

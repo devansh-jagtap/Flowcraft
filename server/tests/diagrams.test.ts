@@ -47,6 +47,19 @@ describe('diagrams', () => {
     expect(res.body.diagram).toMatchObject({ source: 'A -> B -> C', theme: 'forest', positions: { a: { x: 10, y: 20 } } });
   });
 
+  it('saves positions of deep mind-map nodes, whose ids are long paths', async () => {
+    const { auth } = await signUp();
+    const diagram = await createDiagram(auth, { type: 'mindmap', source: 'Root\n  Child' });
+    // Five levels of 60-character slugs, as the tree parser produces for long labels.
+    const deepId = Array.from({ length: 5 }, (_, i) => `level-${i}-${'x'.repeat(52)}`).join('/');
+    const res = await api()
+      .patch(`/api/diagrams/${diagram._id}`)
+      .set(auth)
+      .send({ positions: { [deepId]: { x: 1, y: 2 } } })
+      .expect(200);
+    expect(res.body.diagram.positions[deepId]).toEqual({ x: 1, y: 2 });
+  });
+
   it('rejects empty updates and invalid positions', async () => {
     const { auth } = await signUp();
     const diagram = await createDiagram(auth);

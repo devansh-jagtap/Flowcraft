@@ -1,8 +1,8 @@
-import { env } from '../config/env.js';
-import { HttpError } from '../lib/HttpError.js';
 import { and, eq, gt, lt, lte, or, sql } from 'drizzle-orm';
+import { env } from '../config/env.js';
 import { db } from '../db/client.js';
 import { aiUsage } from '../db/schema.js';
+import { HttpError } from '../lib/HttpError.js';
 
 /** What the client shows as "3 of 5 free generations left". */
 export interface FreeUsage {
@@ -12,28 +12,43 @@ export interface FreeUsage {
   resetsAt: string | null;
 }
 
+/** Who is asking: accounts are counted by user id, guests by network address with a smaller allowance. */
+export interface QuotaSubject {
+  key: string;
+  guest: boolean;
+}
+
+export const freeLimit = (subject: QuotaSubject) => (subject.guest ? env.freeAi.guestLimit : env.freeAi.limit);
+
 const windowMs = () => env.freeAi.windowHours * 60 * 60 * 1000;
 
-function toUsage(count: number, resetsAt: Date | null): FreeUsage {
-  const { limit } = env.freeAi;
+function toUsage(limit: number, count: number, resetsAt: Date | null): FreeUsage {
   return { limit, remaining: Math.max(0, limit - count), resetsAt: resetsAt?.toISOString() ?? null };
 }
 
-export async function freeUsage(key: string): Promise<FreeUsage> {
-  const [usage] = await db().select().from(aiUsage).where(eq(aiUsage.key, key));
-  return usage && usage.resetsAt > new Date() ? toUsage(usage.count, usage.resetsAt) : toUsage(0, null);
+export async function freeUsage(subject: QuotaSubject): Promise<FreeUsage> {
+  const limit = freeLimit(subject);
+  const [usage] = await db().select().from(aiUsage).where(eq(aiUsage.key, subject.key));
+  return usage && usage.resetsAt > new Date() ? toUsage(limit, usage.count, usage.resetsAt) : toUsage(limit, 0, null);
 }
 
-function limitReached(resetsAt: Date | null): HttpError {
-  const { limit, windowHours } = env.freeAi;
+function limitReached(subject: QuotaSubject, resetsAt: Date | null): HttpError {
+  const limit = freeLimit(subject);
+  const { windowHours } = env.freeAi;
+  const accountLimit = env.freeAi.limit;
+  const upgrade = subject.guest && accountLimit > limit;
+
   if (limit === 0) {
-    return new HttpError(402, 'Add your own API key to generate diagrams with AI.', undefined, 'AI_KEY_REQUIRED');
+    return upgrade
+      ? new HttpError(401, `Sign in to get ${accountLimit} free AI generations a day, or add your own API key.`, undefined, 'AI_SIGN_IN')
+      : new HttpError(402, 'Add your own API key to generate diagrams with AI.', undefined, 'AI_KEY_REQUIRED');
   }
   const when = resetsAt ? ` They reset ${resetsAt.toUTCString().replace(/:\d\d GMT$/, ' UTC')}.` : '';
   const period = windowHours === 24 ? 'today' : `in the last ${windowHours} hours`;
+  const next = upgrade ? `Sign in to get ${accountLimit} a day, or add your own API key.` : 'Add your own API key to keep going.';
   return new HttpError(
     429,
-    `You've used your ${limit} free AI generation${limit === 1 ? '' : 's'} ${period}. Add your own API key to keep going.${when}`,
+    `You've used your ${limit} free ${subject.guest ? 'guest ' : ''}AI generation${limit === 1 ? '' : 's'} ${period}. ${next}${when}`,
     undefined,
     'AI_FREE_LIMIT'
   );
@@ -43,9 +58,9 @@ function limitReached(resetsAt: Date | null): HttpError {
  * Atomically takes one free generation, or throws if the visitor has none left.
  * Call refundFreeGeneration if the generation then fails, so errors don't eat the quota.
  */
-export async function reserveFreeGeneration(key: string): Promise<FreeUsage> {
-  const { limit } = env.freeAi;
-  if (limit === 0) throw limitReached(null);
+export async function reserveFreeGeneration(subject: QuotaSubject): Promise<FreeUsage> {
+  const limit = freeLimit(subject);
+  if (limit === 0) throw limitReached(subject, null);
 
   const now = new Date();
   const resetsAt = new Date(now.getTime() + windowMs());
@@ -54,7 +69,7 @@ export async function reserveFreeGeneration(key: string): Promise<FreeUsage> {
   // unless the limit is reached (then no row comes back).
   const [usage] = await db()
     .insert(aiUsage)
-    .values({ key, count: 1, resetsAt })
+    .values({ key: subject.key, count: 1, resetsAt })
     .onConflictDoUpdate({
       target: aiUsage.key,
       set: {
@@ -66,17 +81,17 @@ export async function reserveFreeGeneration(key: string): Promise<FreeUsage> {
     .returning();
 
   if (!usage) {
-    const [current] = await db().select().from(aiUsage).where(eq(aiUsage.key, key));
-    throw limitReached(current?.resetsAt ?? null);
+    const [current] = await db().select().from(aiUsage).where(eq(aiUsage.key, subject.key));
+    throw limitReached(subject, current?.resetsAt ?? null);
   }
   // Now and then, clear out windows that ended over a day ago so guest IPs don't pile up.
   if (Math.random() < 0.02) await db().delete(aiUsage).where(lt(aiUsage.resetsAt, new Date(now.getTime() - 86_400_000)));
-  return toUsage(usage.count, usage.resetsAt);
+  return toUsage(limit, usage.count, usage.resetsAt);
 }
 
-export async function refundFreeGeneration(key: string): Promise<void> {
+export async function refundFreeGeneration(subject: QuotaSubject): Promise<void> {
   await db()
     .update(aiUsage)
     .set({ count: sql`${aiUsage.count} - 1` })
-    .where(and(eq(aiUsage.key, key), gt(aiUsage.count, 0)));
+    .where(and(eq(aiUsage.key, subject.key), gt(aiUsage.count, 0)));
 }

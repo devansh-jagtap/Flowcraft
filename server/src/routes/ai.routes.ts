@@ -19,4 +19,10 @@ export const aiRoutes = Router()
   .get('/status', optionalAuth, ai.status)
   .get('/usage', requireAuth, ai.usage)
   .post('/generate', limiter, optionalAuth, ai.generate)
-  .post('/test-key', limiter, ai.testKey);
+  .post('/test-key', limiter, ai.testKey)
+  // API keys saved to the account (encrypted); only masked hints are ever returned.
+  .get('/keys', requireAuth, ai.listAccountKeys)
+  .put('/keys/active', requireAuth, ai.setActiveKey)
+  .put('/keys/:provider', limiter, requireAuth, ai.saveAccountKey)
+  .post('/keys/:provider/test', limiter, requireAuth, ai.testAccountKey)
+  .delete('/keys/:provider', requireAuth, ai.deleteAccountKey);

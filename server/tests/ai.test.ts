@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkSource } from '../src/ai/checkSource.js';
 import { generateDiagram, normalise } from '../src/ai/diagramGenerator.js';
 import { env } from '../src/config/env.js';
+import { db } from '../src/db/client.js';
+import { userAiKeys } from '../src/db/schema.js';
+import { tokenFor } from './fakeClerk.js';
 import { api, signUp } from './helpers.js';
 
 const FLOW = {
@@ -122,8 +125,14 @@ describe('generateDiagram', () => {
 describe('AI routes', () => {
   const originalKey = env.gemini.apiKey;
   const originalGatewayKey = env.aiGateway.apiKey;
-  const originalLimit = env.freeAi.limit;
-  const setLimit = (limit: number) => ((env.freeAi as { limit: number }).limit = limit);
+  const originalLimits = { ...env.freeAi };
+  /** Free generations per window: `account` for signed-in users, `guest` per network address. */
+  const setLimits = ({ account, guest }: { account?: number; guest?: number }) => {
+    const free = env.freeAi as { limit: number; guestLimit: number };
+    if (account !== undefined) free.limit = account;
+    if (guest !== undefined) free.guestLimit = guest;
+  };
+  const setLimit = (limit: number) => setLimits({ account: limit, guest: limit });
   let fetchMock: ReturnType<typeof vi.fn>;
   const realFetch = globalThis.fetch;
 
@@ -141,18 +150,23 @@ describe('AI routes', () => {
   afterEach(() => {
     (env.gemini as { apiKey: string }).apiKey = originalKey;
     (env.aiGateway as { apiKey: string }).apiKey = originalGatewayKey;
-    setLimit(originalLimit);
+    setLimits({ account: originalLimits.limit, guest: originalLimits.guestLimit });
     globalThis.fetch = realFetch;
   });
 
   it('reports whether AI is configured and how many free generations are left', async () => {
     expect((await api().get('/api/ai/status').expect(200)).body).toEqual({
       enabled: true,
-      free: { limit: env.freeAi.limit, remaining: env.freeAi.limit, resetsAt: null },
+      free: { limit: env.freeAi.guestLimit, remaining: env.freeAi.guestLimit, resetsAt: null },
       freeTier: { provider: 'gemini', label: 'Gemini', model: env.gemini.model },
+      limits: { guest: env.freeAi.guestLimit, account: env.freeAi.limit, windowHours: env.freeAi.windowHours },
+      signedIn: false,
+      accountKeys: true,
     });
+    const { auth } = await signUp();
+    expect((await api().get('/api/ai/status').set(auth).expect(200)).body).toMatchObject({ signedIn: true, free: { limit: env.freeAi.limit } });
     (env.gemini as { apiKey: string }).apiKey = '';
-    expect((await api().get('/api/ai/status').expect(200)).body).toEqual({ enabled: false, free: null, freeTier: null });
+    expect((await api().get('/api/ai/status').expect(200)).body).toMatchObject({ enabled: false, free: null, freeTier: null });
   });
 
   it('returns 503 with setup instructions when no key is set', async () => {
@@ -206,9 +220,9 @@ describe('AI routes', () => {
   });
 
   describe('free quota on the server key', () => {
-    beforeEach(() => setLimit(2));
+    beforeEach(() => setLimits({ account: 3, guest: 2 }));
 
-    it('counts down and then asks for an own key', async () => {
+    it('gives guests a small trial and invites them to sign in for more', async () => {
       fetchMock.mockImplementation(async () => geminiReply(FLOW));
       const first = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(200);
       expect(first.body.free).toMatchObject({ limit: 2, remaining: 1 });
@@ -217,9 +231,20 @@ describe('AI routes', () => {
 
       const res = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(429);
       expect(res.body.error.code).toBe('AI_FREE_LIMIT');
-      expect(res.body.error.message).toMatch(/2 free AI generations today/);
+      expect(res.body.error.message).toMatch(/2 free guest AI generations today\. Sign in to get 3 a day/);
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect((await api().get('/api/ai/status').expect(200)).body.free).toMatchObject({ remaining: 0, resetsAt: expect.any(String) });
+    });
+
+    it('gives accounts their own, larger allowance', async () => {
+      fetchMock.mockImplementation(async () => geminiReply(FLOW));
+      const { auth } = await signUp();
+      for (let i = 0; i < 3; i += 1) await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow' }).expect(200);
+
+      const res = await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow' }).expect(429);
+      expect(res.body.error.message).toMatch(/your 3 free AI generations today\. Add your own API key/);
+      // Using up an account's allowance doesn't touch the guest count on the same address, and vice versa.
+      expect((await api().get('/api/ai/status').expect(200)).body.free.remaining).toBe(2);
     });
 
     it('gives a failed generation back', async () => {
@@ -228,16 +253,11 @@ describe('AI routes', () => {
       expect((await api().get('/api/ai/status').expect(200)).body.free.remaining).toBe(2);
     });
 
-    it('counts signed-in users separately from guests on the same IP', async () => {
-      fetchMock.mockImplementation(async () => geminiReply(FLOW));
-      setLimit(1);
-      await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(200);
-      await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(429);
-
-      const { auth } = await signUp();
-      expect((await api().get('/api/ai/status').set(auth).expect(200)).body.free.remaining).toBe(1);
-      await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow' }).expect(200);
-      await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow' }).expect(429);
+    it('asks guests to sign in when only accounts get free generations', async () => {
+      setLimits({ guest: 0 });
+      const res = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(401);
+      expect(res.body.error).toMatchObject({ code: 'AI_SIGN_IN', message: expect.stringMatching(/Sign in to get 3 free AI generations a day/) });
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('requires an own key when the free tier is turned off', async () => {
@@ -245,6 +265,78 @@ describe('AI routes', () => {
       const res = await api().post('/api/ai/generate').send({ prompt: 'login flow' }).expect(402);
       expect(res.body.error.code).toBe('AI_KEY_REQUIRED');
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('API keys saved to the account', () => {
+    const save = (auth: Record<string, string>, provider: string, body: Record<string, unknown>) =>
+      api().put(`/api/ai/keys/${provider}`).set(auth).send(body);
+
+    it('stores keys encrypted, returns only a masked hint, and uses the chosen key for generating', async () => {
+      const { auth } = await signUp();
+      setLimit(0);
+      const res = await save(auth, 'openai', { apiKey: 'sk-proj-abcdef123456', model: 'gpt-4.1' }).expect(200);
+      // The first saved key becomes the active one.
+      expect(res.body).toEqual({
+        active: 'openai',
+        keys: [{ provider: 'openai', hint: 'sk-p…3456', model: 'gpt-4.1', verifiedAt: null, updatedAt: expect.any(String) }],
+      });
+      expect(JSON.stringify(res.body)).not.toContain('abcdef123456');
+
+      const [row] = await db().select().from(userAiKeys);
+      expect(row.encryptedKey).toMatch(/^v1\./);
+      expect(row.encryptedKey).not.toContain('abcdef');
+
+      // No key in the request: the server decrypts the account's chosen key.
+      fetchMock.mockResolvedValue(gatewayReply(FLOW));
+      const generated = await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow' }).expect(200);
+      expect(generated.body.usage).toMatchObject({ provider: 'openai', model: 'gpt-4.1', source: 'own' });
+      expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer sk-proj-abcdef123456');
+    });
+
+    it('survives signing out and in: keys belong to the account, not the browser', async () => {
+      const { auth, clerkId } = await signUp();
+      await save(auth, 'gemini', { apiKey: 'AQ.my-gemini-key-123' }).expect(200);
+      // A new session token for the same account sees the same keys.
+      const again = { Authorization: `Bearer ${tokenFor(clerkId)}` };
+      expect((await api().get('/api/ai/keys').set(again).expect(200)).body).toMatchObject({ active: 'gemini', keys: [{ provider: 'gemini' }] });
+    });
+
+    it('tests a key before saving it when asked, and keeps a working key verified', async () => {
+      const { auth } = await signUp();
+      fetchMock.mockResolvedValueOnce(new Response('{"error":{"message":"bad"}}', { status: 401 }));
+      const bad = await save(auth, 'gateway', { apiKey: 'vck_wrong_key_000', test: true }).expect(400);
+      expect(bad.body.error.code).toBe('AI_KEY_INVALID');
+      expect((await api().get('/api/ai/keys').set(auth).expect(200)).body.keys).toEqual([]);
+
+      fetchMock.mockImplementation(async () => gatewayReply({ ok: true }));
+      const good = await save(auth, 'gateway', { apiKey: 'vck_right_key_000', test: true }).expect(200);
+      expect(good.body.keys[0].verifiedAt).toEqual(expect.any(String));
+      await api().post('/api/ai/keys/gateway/test').set(auth).expect(200);
+    });
+
+    it('switches between keys and the free generations, and forgets a removed key', async () => {
+      const { auth } = await signUp();
+      await save(auth, 'gemini', { apiKey: 'AQ.my-gemini-key-123' }).expect(200);
+      await save(auth, 'openai', { apiKey: 'sk-my-openai-key-123' }).expect(200);
+      expect((await api().get('/api/ai/keys').set(auth).expect(200)).body.active).toBe('gemini');
+
+      await api().put('/api/ai/keys/active').set(auth).send({ provider: 'openai' }).expect(200);
+      await api().put('/api/ai/keys/active').set(auth).send({ provider: null }).expect(200);
+      await api().put('/api/ai/keys/active').set(auth).send({ provider: 'gateway' }).expect(400);
+
+      await api().put('/api/ai/keys/active').set(auth).send({ provider: 'openai' }).expect(200);
+      const removed = await api().delete('/api/ai/keys/openai').set(auth).expect(200);
+      expect(removed.body).toMatchObject({ active: null, keys: [{ provider: 'gemini' }] });
+    });
+
+    it("keeps each account's keys to itself and needs sign-in", async () => {
+      const alice = await signUp();
+      const bob = await signUp();
+      await save(alice.auth, 'gemini', { apiKey: 'AQ.alice-key-123456' }).expect(200);
+      expect((await api().get('/api/ai/keys').set(bob.auth).expect(200)).body.keys).toEqual([]);
+      await api().get('/api/ai/keys').expect(401);
+      await save({}, 'gemini', { apiKey: 'AQ.guest-key-123456' }).expect(401);
     });
   });
 
@@ -260,7 +352,7 @@ describe('AI routes', () => {
       fetchMock.mockResolvedValue(geminiReply(FLOW));
       const res = await api().post('/api/ai/generate').set(own('gemini', 'my-own-key-123', 'gemini-2.5-pro')).send({ prompt: 'login flow' }).expect(200);
 
-      expect(res.body).toEqual({ diagram: FLOW, usage: { provider: 'gemini', model: 'gemini-2.5-pro', inputTokens: 0, outputTokens: 0 } });
+      expect(res.body).toEqual({ diagram: FLOW, usage: { provider: 'gemini', model: 'gemini-2.5-pro', source: 'own', inputTokens: 0, outputTokens: 0 } });
       const [url, init] = fetchMock.mock.calls[0];
       expect(String(url)).toBe(`${env.gemini.baseUrl}/models/gemini-2.5-pro:generateContent`);
       expect(init.headers['x-goog-api-key']).toBe('my-own-key-123');
@@ -318,7 +410,7 @@ describe('AI routes', () => {
       const { auth } = await signUp();
       fetchMock.mockResolvedValueOnce(withTokens(FLOW, 100, 20));
       const free = await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow for my app' }).expect(200);
-      expect(free.body.usage).toEqual({ provider: 'gemini', model: env.gemini.model, inputTokens: 100, outputTokens: 25 });
+      expect(free.body.usage).toEqual({ provider: 'gemini', model: env.gemini.model, source: 'free', inputTokens: 100, outputTokens: 25 });
 
       fetchMock.mockResolvedValueOnce(gatewayReply(FLOW));
       await api()

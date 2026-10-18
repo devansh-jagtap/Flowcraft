@@ -28,7 +28,8 @@ It is made for:
 - Prompt to diagram: the model picks the diagram type and writes it in Flowcraft's text syntax.
 - Refine by chatting. Every AI change can be undone, and the prompt history is saved with the diagram.
 - Answers are schema-checked and syntax-checked. Problems (a disconnected step, a missing `end`, an unknown attribute tag) are sent back to the model for one automatic retry.
-- Free tier plus bring your own key: every visitor gets a few free generations a day on the server's key (counted per account, or per IP for guests). After that they can add their own Gemini, OpenAI or Vercel AI Gateway key, which is kept only in their browser and never stored on the server.
+- Free tier plus bring your own key: signed-in users get a few free generations a day on the server's key, guests a smaller trial per network address. After that they add their own Gemini, OpenAI or Vercel AI Gateway key: saved to their account encrypted (AES-256-GCM, only a masked hint is ever sent back), or kept in the browser for guests.
+- The **AI keys** page (`/ai`) manages keys per provider, chooses which one draws diagrams, and shows each account's private usage: generations and tokens per provider and model, a daily chart and recent activity.
 - Server keys never reach the browser, and generation is rate-limited per IP.
 
 **Editing**
@@ -223,7 +224,9 @@ GEMINI_API_KEY=...            # or AI_GATEWAY_API_KEY=...
 | `AI_GATEWAY_MODEL` | Gateway model id | `google/gemini-2.5-flash` |
 | `GEMINI_API_KEY` | Fallback when no gateway key is set: calls Gemini directly | |
 | `GEMINI_MODEL` | Gemini model | `gemini-2.5-flash` |
-| `AI_FREE_LIMIT` | Free generations per visitor on the server's key. After that, visitors add their own key. `0` means own keys only. | `5` |
+| `AI_FREE_LIMIT` | Free generations per signed-in account on the server's key, per window. After that, people add their own key. `0` means none. | `5` |
+| `AI_FREE_GUEST_LIMIT` | Free generations per guest network address. Smaller, since signing up unlocks the full allowance. | `2` |
+| `AI_KEYS_SECRET` | Encrypts the API keys users save to their account (AES-256-GCM). 32+ random characters; never change it once keys are saved. **Required** for saving keys to accounts. | |
 | `AI_FREE_WINDOW_HOURS` | How often the free generations reset | `24` |
 | `OPENAI_MODEL` | Default model for visitors who bring an OpenAI key | `gpt-4.1-mini` |
 | `TRUST_PROXY` | Express `trust proxy`, so per-IP limits see real visitor IPs behind a host's proxy. Use the number of proxies in front of the app. | `1` in production, off otherwise |
