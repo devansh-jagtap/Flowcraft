@@ -18,11 +18,12 @@ export function useAiStatus() {
     if (identity) aiApi.identify(identity);
   }, [identity]);
 
-  if (ownKey) return { loading: false, usable: true, ownKey, free, reason: null } as const;
-  if (!server) return { loading: true, usable: undefined, ownKey, free, reason: null } as const;
-  if (!server.enabled) return { loading: false, usable: false, ownKey, free, reason: 'no-server-key' } as const;
-  if (!free || free.remaining <= 0) return { loading: false, usable: false, ownKey, free, reason: 'free-used' } as const;
-  return { loading: false, usable: true, ownKey, free, reason: null } as const;
+  const base = { ownKey, free, freeTier: server?.freeTier ?? null };
+  if (ownKey) return { ...base, loading: false, usable: true, reason: null } as const;
+  if (!server) return { ...base, loading: true, usable: undefined, reason: null } as const;
+  if (!server.enabled) return { ...base, loading: false, usable: false, reason: 'no-server-key' } as const;
+  if (!free || free.remaining <= 0) return { ...base, loading: false, usable: false, reason: 'free-used' } as const;
+  return { ...base, loading: false, usable: true, reason: null } as const;
 }
 
 /** undefined while loading, then true/false. */

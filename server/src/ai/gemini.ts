@@ -7,7 +7,7 @@ import { parseJsonText, postJson, providerError, type AiCredentials, type Genera
  * Errors are translated into user-friendly HttpErrors; API keys are never logged or returned.
  */
 export async function generateWithGemini(
-  { system, messages, schema, temperature = 0.4 }: GenerateJsonOptions,
+  { system, messages, schema, temperature = 0.4, onUsage }: GenerateJsonOptions,
   credentials: AiCredentials
 ): Promise<unknown> {
   const res = await postJson(
@@ -29,7 +29,11 @@ export async function generateWithGemini(
   const data = (await res.json()) as {
     candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
     promptFeedback?: { blockReason?: string };
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
   };
+  const meta = data.usageMetadata;
+  // Gemini bills "thinking" tokens as output.
+  onUsage?.({ inputTokens: meta?.promptTokenCount ?? 0, outputTokens: (meta?.candidatesTokenCount ?? 0) + (meta?.thoughtsTokenCount ?? 0) });
 
   if (data.promptFeedback?.blockReason) {
     throw HttpError.badRequest('That request was blocked by the AI safety filter. Try describing it differently.');

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid, varchar, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { bigserial, boolean, index, integer, jsonb, pgTable, text, timestamp, uuid, varchar, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { DiagramTheme, DiagramType, Direction } from '../models/constants.js';
 
 const timestamps = {
@@ -65,6 +65,31 @@ export const aiUsage = pgTable(
     resetsAt: timestamp('resets_at', { withTimezone: true }).notNull(),
   },
   (t) => [index('ai_usage_resets_at_idx').on(t.resetsAt)]
+);
+
+/** One AI generation (or failed attempt), for the AI usage dashboard. */
+export const aiEvents = pgTable(
+  'ai_events',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    /** Same as ai_usage.key: "user:<id>" or "ip:<address>". */
+    subject: text('subject').notNull(),
+    /** "free" for the server's key, "own" for the visitor's key. */
+    source: text('source').$type<'free' | 'own'>().notNull(),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    ok: boolean('ok').notNull(),
+    errorCode: text('error_code'),
+    /** Model calls made, including the automatic retry with feedback. */
+    calls: integer('calls').notNull().default(0),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    durationMs: integer('duration_ms').notNull().default(0),
+    /** Start of the prompt, kept only for signed-in users (guests can share an IP). */
+    prompt: varchar('prompt', { length: 120 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('ai_events_subject_created_idx').on(t.subject, t.createdAt.desc())]
 );
 
 export type User = typeof users.$inferSelect;

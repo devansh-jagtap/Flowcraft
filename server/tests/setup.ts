@@ -34,7 +34,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
   fakeClerkUsers.clear();
-  await db().execute(sql`truncate table ai_usage, diagrams, users cascade`);
+  await db().execute(sql`truncate table ai_events, ai_usage, diagrams, users cascade`);
 });
 
 afterAll(async () => {

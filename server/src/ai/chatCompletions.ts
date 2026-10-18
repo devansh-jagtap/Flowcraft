@@ -25,7 +25,7 @@ export function toJsonSchema(schema: Record<string, unknown>): Record<string, un
  * Errors are translated into user-friendly HttpErrors; API keys are never logged or returned.
  */
 export async function generateWithChatCompletions(
-  { system, messages, schema, temperature = 0.4 }: GenerateJsonOptions,
+  { system, messages, schema, temperature = 0.4, onUsage }: GenerateJsonOptions,
   credentials: AiCredentials
 ): Promise<unknown> {
   const res = await postJson(
@@ -54,7 +54,9 @@ export async function generateWithChatCompletions(
 
   const data = (await res.json()) as {
     choices?: { message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  onUsage?.({ inputTokens: data.usage?.prompt_tokens ?? 0, outputTokens: data.usage?.completion_tokens ?? 0 });
 
   const choice = data.choices?.[0];
   if (choice?.message?.refusal || choice?.finish_reason === 'content_filter') {

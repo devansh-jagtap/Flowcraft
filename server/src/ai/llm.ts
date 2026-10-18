@@ -10,6 +10,13 @@ export interface GenerateJsonOptions {
   /** OpenAPI-style schema (Gemini dialect) the model must follow for its JSON answer. */
   schema: Record<string, unknown>;
   temperature?: number;
+  /** Called after each successful model call with the tokens it used, for the usage dashboard. */
+  onUsage?: (usage: TokenUsage) => void;
+}
+
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
 }
 
 export const AI_PROVIDERS = ['gemini', 'openai', 'gateway'] as const;

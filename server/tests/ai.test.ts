@@ -149,9 +149,10 @@ describe('AI routes', () => {
     expect((await api().get('/api/ai/status').expect(200)).body).toEqual({
       enabled: true,
       free: { limit: env.freeAi.limit, remaining: env.freeAi.limit, resetsAt: null },
+      freeTier: { provider: 'gemini', label: 'Gemini', model: env.gemini.model },
     });
     (env.gemini as { apiKey: string }).apiKey = '';
-    expect((await api().get('/api/ai/status').expect(200)).body).toEqual({ enabled: false, free: null });
+    expect((await api().get('/api/ai/status').expect(200)).body).toEqual({ enabled: false, free: null, freeTier: null });
   });
 
   it('returns 503 with setup instructions when no key is set', async () => {
@@ -259,7 +260,7 @@ describe('AI routes', () => {
       fetchMock.mockResolvedValue(geminiReply(FLOW));
       const res = await api().post('/api/ai/generate').set(own('gemini', 'my-own-key-123', 'gemini-2.5-pro')).send({ prompt: 'login flow' }).expect(200);
 
-      expect(res.body).toEqual({ diagram: FLOW });
+      expect(res.body).toEqual({ diagram: FLOW, usage: { provider: 'gemini', model: 'gemini-2.5-pro', inputTokens: 0, outputTokens: 0 } });
       const [url, init] = fetchMock.mock.calls[0];
       expect(String(url)).toBe(`${env.gemini.baseUrl}/models/gemini-2.5-pro:generateContent`);
       expect(init.headers['x-goog-api-key']).toBe('my-own-key-123');
@@ -299,6 +300,87 @@ describe('AI routes', () => {
       await api().post('/api/ai/generate').set(own('gemini', 'short')).send({ prompt: 'login flow' }).expect(400);
       await api().post('/api/ai/generate').set(own('gemini', 'my-own-key-123', '../../evil')).send({ prompt: 'login flow' }).expect(400);
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('usage dashboard', () => {
+    /** Gemini reply that also reports token usage. */
+    const withTokens = (payload: unknown, input: number, output: number) =>
+      new Response(
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: JSON.stringify(payload) }] } }],
+          usageMetadata: { promptTokenCount: input, candidatesTokenCount: output, thoughtsTokenCount: 5 },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+
+    it('logs each generation with tokens, per source, provider and model', async () => {
+      const { auth } = await signUp();
+      fetchMock.mockResolvedValueOnce(withTokens(FLOW, 100, 20));
+      const free = await api().post('/api/ai/generate').set(auth).send({ prompt: 'login flow for my app' }).expect(200);
+      expect(free.body.usage).toEqual({ provider: 'gemini', model: env.gemini.model, inputTokens: 100, outputTokens: 25 });
+
+      fetchMock.mockResolvedValueOnce(gatewayReply(FLOW));
+      await api()
+        .post('/api/ai/generate')
+        .set({ ...auth, 'X-AI-Provider': 'gateway', 'X-AI-Key': 'my-own-key-123' })
+        .send({ prompt: 'checkout flow' })
+        .expect(200);
+
+      fetchMock.mockResolvedValueOnce(new Response('{"error":{"message":"bad key"}}', { status: 401 }));
+      await api()
+        .post('/api/ai/generate')
+        .set({ ...auth, 'X-AI-Provider': 'openai', 'X-AI-Key': 'sk-wrong-1234567' })
+        .send({ prompt: 'signup flow' })
+        .expect(400);
+
+      const res = await api().get('/api/ai/usage').set(auth).expect(200);
+      expect(res.body.signedIn).toBe(true);
+      expect(res.body.free).toMatchObject({ limit: env.freeAi.limit, remaining: env.freeAi.limit - 1 });
+      expect(res.body.byModel).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ source: 'free', provider: 'gemini', generations: 1, failed: 0, inputTokens: 100, outputTokens: 25 }),
+          expect.objectContaining({ source: 'own', provider: 'gateway', generations: 1, failed: 0 }),
+          expect.objectContaining({ source: 'own', provider: 'openai', generations: 1, failed: 1 }),
+        ])
+      );
+      expect(res.body.daily).toEqual([{ day: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), generations: 3, tokens: 125 }]);
+      expect(res.body.recent).toHaveLength(3);
+      expect(res.body.recent[0]).toMatchObject({ provider: 'openai', ok: false, errorCode: 'AI_KEY_INVALID', prompt: 'signup flow' });
+    });
+
+    it("keeps usage separate per visitor and doesn't store guests' prompts", async () => {
+      fetchMock.mockResolvedValue(geminiReply(FLOW));
+      await api().post('/api/ai/generate').send({ prompt: 'a guest prompt' }).expect(200);
+
+      const guest = await api().get('/api/ai/usage').expect(200);
+      expect(guest.body.signedIn).toBe(false);
+      expect(guest.body.recent).toHaveLength(1);
+      expect(guest.body.recent[0].prompt).toBeNull();
+
+      const { auth } = await signUp();
+      expect((await api().get('/api/ai/usage').set(auth).expect(200)).body.recent).toEqual([]);
+    });
+  });
+
+  describe('testing an own key', () => {
+    it('checks the key and model with a tiny request', async () => {
+      fetchMock.mockResolvedValue(gatewayReply({ ok: true }));
+      const res = await api()
+        .post('/api/ai/test-key')
+        .set({ 'X-AI-Provider': 'openai', 'X-AI-Key': 'sk-own-1234567', 'X-AI-Model': 'gpt-4.1-nano' })
+        .expect(200);
+      expect(res.body).toMatchObject({ ok: true, provider: 'openai', model: 'gpt-4.1-nano', latencyMs: expect.any(Number) });
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).response_format.json_schema.schema.properties.ok.type).toBe('boolean');
+      // A test is not a generation, so it isn't logged.
+      expect((await api().get('/api/ai/usage').expect(200)).body.recent).toEqual([]);
+    });
+
+    it('reports a rejected key and needs a key to test', async () => {
+      fetchMock.mockResolvedValue(new Response('{"error":{"message":"API key not valid"}}', { status: 400 }));
+      const res = await api().post('/api/ai/test-key').set({ 'X-AI-Provider': 'gemini', 'X-AI-Key': 'AQ.not-a-real-key' }).expect(400);
+      expect(res.body.error.code).toBe('AI_KEY_INVALID');
+      await api().post('/api/ai/test-key').expect(400);
     });
   });
 

@@ -15,4 +15,8 @@ const limiter = rateLimit({
 });
 
 // optionalAuth lets signed-in users have their own free quota instead of sharing their IP's.
-export const aiRoutes = Router().get('/status', optionalAuth, ai.status).post('/generate', limiter, optionalAuth, ai.generate);
+export const aiRoutes = Router()
+  .get('/status', optionalAuth, ai.status)
+  .get('/usage', optionalAuth, ai.usage)
+  .post('/generate', limiter, optionalAuth, ai.generate)
+  .post('/test-key', limiter, ai.testKey);
