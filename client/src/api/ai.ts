@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { getActiveKey, type AiProvider } from '../lib/aiKey';
+import { getRequestKey, type AiProvider } from '../lib/aiKey';
+import { keyHeaders } from './aiKeys';
 import type { DiagramType } from '../lib/diagram/types';
 import { api, ApiError } from './client';
 import type { GeneratedDiagram } from './types';
@@ -23,6 +24,11 @@ export interface AiStatus {
   /** Free generations left on the server's key, or null when it has none. */
   free: FreeUsage | null;
   freeTier: FreeTier | null;
+  /** Free generations per window for guests (per network address) and for accounts. */
+  limits: { guest: number; account: number; windowHours: number };
+  signedIn: boolean;
+  /** Whether the server can save API keys to accounts (it needs AI_KEYS_SECRET). */
+  accountKeys: boolean;
 }
 
 export interface UsageRow {
@@ -59,13 +65,6 @@ export interface AiUsage {
   recent: UsageEvent[];
 }
 
-export interface KeyTestResult {
-  ok: true;
-  provider: AiProvider;
-  model: string;
-  latencyMs: number;
-}
-
 let status: AiStatus | undefined;
 let statusPromise: Promise<AiStatus> | null = null;
 /** Clerk user id or 'guest': free generations are counted per account, so a sign-in changes the count. */
@@ -83,12 +82,6 @@ function setStatus(next: AiStatus) {
   notify();
 }
 
-/** A key sent as headers, so it stays out of request bodies and URLs. */
-function keyHeaders(key: { provider: AiProvider; apiKey: string; model?: string } | null): Record<string, string> {
-  if (!key) return {};
-  return { 'X-AI-Provider': key.provider, 'X-AI-Key': key.apiKey, ...(key.model && { 'X-AI-Model': key.model }) };
-}
-
 export const aiApi = {
   /** Loads the server's AI status once per session; retried after a failure. Pass refresh to fetch again. */
   status(refresh = false): Promise<AiStatus> {
@@ -101,7 +94,14 @@ export const aiApi = {
       })
       .catch(() => {
         statusPromise = null;
-        const fallback = { enabled: false, free: null, freeTier: null };
+        const fallback: AiStatus = {
+          enabled: false,
+          free: null,
+          freeTier: null,
+          limits: { guest: 0, account: 0, windowHours: 24 },
+          signedIn: false,
+          accountKeys: false,
+        };
         setStatus(fallback);
         return fallback;
       });
@@ -119,7 +119,7 @@ export const aiApi = {
 
   async generate(prompt: string, current?: { type: DiagramType; source: string }) {
     try {
-      const res = await api.post<{ diagram: GeneratedDiagram; free?: FreeUsage }>('/ai/generate', { prompt, current }, { headers: keyHeaders(getActiveKey()) });
+      const res = await api.post<{ diagram: GeneratedDiagram; free?: FreeUsage }>('/ai/generate', { prompt, current }, { headers: keyHeaders(getRequestKey()) });
       if (res.free && status) setStatus({ ...status, free: res.free });
       return res.diagram;
     } catch (err) {
@@ -133,15 +133,11 @@ export const aiApi = {
   },
 
   usage: (signal?: AbortSignal) => api.get<AiUsage>('/ai/usage', { signal }),
-
-  /** Sends one tiny request with the key to check it (and the model) actually work. */
-  testKey: (key: { provider: AiProvider; apiKey: string; model?: string }) =>
-    api.post<KeyTestResult>('/ai/test-key', {}, { headers: keyHeaders(key) }),
 };
 
 /** Errors that a (different) own key would fix, so the UI offers the key settings next to them. */
 export const needsOwnKey = (err: unknown) =>
-  err instanceof ApiError && ['AI_FREE_LIMIT', 'AI_KEY_REQUIRED', 'AI_KEY_INVALID'].includes(err.code ?? '');
+  err instanceof ApiError && ['AI_FREE_LIMIT', 'AI_KEY_REQUIRED', 'AI_KEY_INVALID', 'AI_SIGN_IN'].includes(err.code ?? '');
 
 function subscribe(listener: () => void) {
   listeners.add(listener);

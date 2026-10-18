@@ -8,6 +8,7 @@ import { DiagramThumbnail } from '../components/diagram/DiagramThumbnail';
 import MacBook from '../components/landing/MacBook';
 import { Segmented } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { draftFromGenerated, guestDraft } from '../lib/draft';
 import { parseDiagram } from '../lib/diagram/parse';
 import { TEMPLATES, TYPE_INFO } from '../lib/diagram/templates';
@@ -72,6 +73,7 @@ const STEPS = [
 export default function LandingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [type, setType] = useState<DemoType>('flowchart');
   const [source, setSource] = useState(DEMOS.flowchart.source);
   // The canvas measures itself on mount, so it waits until the MacBook has opened.
@@ -81,8 +83,15 @@ export default function LandingPage() {
   async function openGenerated(diagram: GeneratedDiagram, prompt: string) {
     const draft = draftFromGenerated(diagram, prompt);
     if (user) {
-      const saved = await diagramsApi.create(draft);
-      navigate(`/d/${saved._id}`);
+      try {
+        const saved = await diagramsApi.create(draft);
+        navigate(`/d/${saved._id}`);
+      } catch (err) {
+        // Don't lose a generated diagram: open it in the editor, where it can be saved once the server answers.
+        guestDraft.save(draft);
+        toast(`Couldn't save it to your diagrams yet: ${(err as Error).message}. It's open in the editor.`, 'error');
+        navigate('/try');
+      }
     } else {
       // Guests continue in the playground; the draft is imported if they sign up.
       guestDraft.save(draft);

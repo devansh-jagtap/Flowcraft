@@ -3,6 +3,7 @@ import { Outlet, Route, Routes } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import { Spinner } from './components/ui';
+import { useAiAccountSync } from './hooks/useAiEnabled';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -15,6 +16,7 @@ const PlaygroundPage = lazy(() => import('./pages/PlaygroundPage'));
 const SharedPage = lazy(() => import('./pages/SharedPage'));
 
 function Layout({ fullHeight = false }: { fullHeight?: boolean }) {
+  useAiAccountSync();
   return (
     <div className={`app${fullHeight ? ' app-full' : ''}`}>
       <a href="#main" className="skip-link">

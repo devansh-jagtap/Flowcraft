@@ -38,15 +38,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (importedRef.current) return;
     importedRef.current = true;
-    const draft = pendingImport.take();
+    const draft = pendingImport.peek();
     if (!draft) return;
     diagramsApi
       .create(draft)
       .then((diagram) => {
+        // Only forget the browser copy once it is safely in the account.
+        pendingImport.done();
         toast('Your playground diagram was saved', 'success');
         navigate(`/d/${diagram._id}`);
       })
-      .catch((err: Error) => toast(`Could not import your draft: ${err.message}`, 'error'));
+      .catch((err: Error) => toast(`Could not save your playground diagram yet (it is still in the editor): ${err.message}`, 'error'));
   }, [navigate, toast]);
 
   async function create(choice: NewDiagramChoice) {

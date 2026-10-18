@@ -73,5 +73,6 @@ export const api = {
   post: <T>(path: string, body?: unknown, opts?: Pick<RequestOptions, 'headers' | 'signal'>) =>
     request<T>(path, { ...opts, method: 'POST', body: body ?? {} }),
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body }),
+  put: <T>(path: string, body: unknown) => request<T>(path, { method: 'PUT', body }),
   delete: (path: string) => request<void>(path, { method: 'DELETE' }),
 };

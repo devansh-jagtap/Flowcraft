@@ -7,7 +7,7 @@ import { ErrorState, Spinner } from '../components/ui';
 import Workspace from '../components/editor/Workspace';
 import { useAsync } from '../hooks/useAsync';
 
-type SaveState = 'saved' | 'pending' | 'saving' | 'error';
+type SaveState = 'saved' | 'pending' | 'saving' | 'error' | 'untitled';
 
 const AUTOSAVE_DELAY = 800;
 const FIELDS = ['title', 'type', 'source', 'theme', 'direction', 'positions', 'prompts'] as const;
@@ -58,21 +58,39 @@ function Editor({ diagram, onDiagramChange }: { diagram: Diagram; onDiagramChang
   const savedRef = useRef(draft);
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  // One save at a time: overlapping requests could finish out of order and leave older content saved.
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const againRef = useRef(false);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<void> => {
+    if (inFlightRef.current) {
+      // Save again, with the latest edits, once the current request finishes.
+      againRef.current = true;
+      return inFlightRef.current;
+    }
     const changes = diff(savedRef.current, draftRef.current);
     if (Object.keys(changes).length === 0) return setSaveState('saved');
-    if (changes.title !== undefined && !changes.title.trim()) return; // wait for a real title
+    if (changes.title !== undefined && !changes.title.trim()) return setSaveState('untitled');
 
     const snapshot = draftRef.current;
     setSaveState('saving');
-    try {
-      await diagramsApi.update(diagram._id, changes);
-      savedRef.current = snapshot;
-      // More edits may have happened while the request was in flight.
-      setSaveState(draftRef.current === snapshot ? 'saved' : 'pending');
-    } catch {
-      setSaveState('error');
+    const request = (async () => {
+      try {
+        await diagramsApi.update(diagram._id, changes);
+        savedRef.current = snapshot;
+        setSaveState(draftRef.current === snapshot ? 'saved' : 'pending');
+      } catch {
+        setSaveState('error');
+        againRef.current = false;
+      } finally {
+        inFlightRef.current = null;
+      }
+    })();
+    inFlightRef.current = request;
+    await request;
+    if (againRef.current) {
+      againRef.current = false;
+      await save();
     }
   }, [diagram._id]);
 
@@ -100,8 +118,9 @@ function Editor({ diagram, onDiagramChange }: { diagram: Diagram; onDiagramChang
     saved: 'Saved',
     pending: 'Unsaved changes',
     saving: 'Saving…',
+    untitled: 'Add a title to save',
     error: (
-      <button className="link-btn danger" onClick={save}>
+      <button className="link-btn danger" onClick={() => void save()}>
         Save failed. Retry
       </button>
     ),

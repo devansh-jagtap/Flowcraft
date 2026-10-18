@@ -28,15 +28,18 @@ export const guestDraft = {
 
 const IMPORT_FLAG = 'flowcraft.importDraftAfterLogin';
 
-/** Set when a guest clicks "Save"; the dashboard imports the draft right after they sign in. */
+/**
+ * Set when a guest clicks "Sign up to save"; the dashboard imports the draft right after they sign in.
+ * The draft stays in the browser until the import succeeds, so a failed request loses nothing.
+ */
 export const pendingImport = {
   mark: () => localStorage.setItem(IMPORT_FLAG, '1'),
-  take(): DiagramDraft | null {
-    if (!localStorage.getItem(IMPORT_FLAG)) return null;
+  peek(): DiagramDraft | null {
+    return localStorage.getItem(IMPORT_FLAG) ? guestDraft.load() : null;
+  },
+  done() {
     localStorage.removeItem(IMPORT_FLAG);
-    const draft = guestDraft.load();
     guestDraft.clear();
-    return draft;
   },
 };
 

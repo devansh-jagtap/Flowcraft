@@ -1,65 +1,71 @@
-import { CheckCircle, Eye, EyeSlash, Gift, Key, WarningCircle } from '@phosphor-icons/react';
+import { SignInButton } from '@clerk/react';
+import { CheckCircle, Eye, EyeSlash, Gift, Key, LockSimple, WarningCircle } from '@phosphor-icons/react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { aiApi } from '../../api/ai';
 import { ApiError } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useAiStatus } from '../../hooks/useAiEnabled';
 import {
   detectProvider,
-  maskKey,
   PROVIDER_ORDER,
   PROVIDERS,
-  removeProviderKey,
-  saveProviderKey,
-  setActiveProvider,
+  removeKey,
+  saveKey,
+  setActiveKey,
+  testKey,
   useAiKeys,
   type AiProvider,
 } from '../../lib/aiKey';
 import { timeAgo } from '../../lib/format';
 import { freeSummary, resetsIn } from '../../lib/freeUsage';
-import { Modal } from '../ui';
+import { Modal, Spinner } from '../ui';
 
 /** "an OpenAI key", "a Gemini key". */
 const withArticle = (label: string) => `${/^[aeiou]/i.test(label) ? 'an' : 'a'} ${label}`;
 
+const errorMessage = (err: unknown) => (err instanceof ApiError || err instanceof Error ? err.message : 'Something went wrong. Try again.');
+
 /** Add or edit one provider's key. Testing first catches wrong keys and model names before they fail a drawing. */
 function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => void }) {
   const toast = useToast();
-  const saved = useAiKeys().keys[provider];
-  const [apiKey, setApiKey] = useState(saved?.apiKey ?? '');
+  const { keys, storage } = useAiKeys();
+  const saved = keys[provider];
+  const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState(saved?.model ?? '');
   const [reveal, setReveal] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const info = PROVIDERS[provider];
   const trimmed = apiKey.trim();
   const detected = detectProvider(trimmed);
   const mismatch = detected && detected !== provider ? detected : null;
+  // Editing a saved key: leaving the key empty keeps it and only changes the model.
+  const keepsKey = Boolean(saved) && trimmed === '';
+  const canSave = keepsKey || trimmed.length >= 10;
 
-  function save(verified: boolean, as: AiProvider = provider) {
-    saveProviderKey(as, { apiKey: trimmed, model: model.trim() || undefined, ...(verified && { verifiedAt: new Date().toISOString() }) });
-    toast(`${PROVIDERS[as].label} key saved${verified ? ' and working' : ''}`, 'success');
-    onDone();
-  }
-
-  async function testAndSave(e: FormEvent) {
-    e.preventDefault();
-    setTesting(true);
+  async function save(test: boolean, as: AiProvider = provider) {
+    setBusy(true);
     setError('');
     try {
-      await aiApi.testKey({ provider, apiKey: trimmed, model: model.trim() || undefined });
-      save(true);
+      await saveKey(as, { apiKey: keepsKey ? undefined : trimmed, model: model.trim(), test });
+      const where = storage === 'account' ? ' to your account' : '';
+      toast(`${PROVIDERS[as].label} key saved${where}${test ? ' and working' : ''}`, 'success');
+      onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not test the key. Check your connection.');
+      setError(errorMessage(err));
     } finally {
-      setTesting(false);
+      setBusy(false);
     }
   }
 
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    void save(true);
+  }
+
   return (
-    <form className="key-form" onSubmit={testAndSave}>
+    <form className="key-form" onSubmit={onSubmit}>
       <label className="field">
         <span>API key</span>
         <div className="key-input">
@@ -70,11 +76,11 @@ function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => voi
               setApiKey(e.target.value);
               setError('');
             }}
-            placeholder={info.keyHint}
+            placeholder={saved ? `Leave empty to keep ${saved.hint}` : info.keyHint}
             autoComplete="off"
             spellCheck={false}
-            required
-            minLength={10}
+            required={!saved}
+            minLength={saved ? undefined : 10}
             maxLength={400}
             autoFocus
           />
@@ -89,7 +95,7 @@ function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => voi
           <WarningCircle aria-hidden weight="fill" />
           <span>
             This looks like {withArticle(PROVIDERS[mismatch].label)} key.{' '}
-            <button type="button" className="link-btn" onClick={() => save(false, mismatch)}>
+            <button type="button" className="link-btn" onClick={() => void save(false, mismatch)} disabled={busy}>
               Save it under {PROVIDERS[mismatch].label}
             </button>
           </span>
@@ -119,9 +125,11 @@ function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => voi
           <WarningCircle aria-hidden weight="fill" />
           <span>
             {error}{' '}
-            <button type="button" className="link-btn" onClick={() => save(false)}>
-              Save anyway
-            </button>
+            {canSave && (
+              <button type="button" className="link-btn" onClick={() => void save(false)} disabled={busy}>
+                Save anyway
+              </button>
+            )}
           </span>
         </div>
       )}
@@ -134,8 +142,8 @@ function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => voi
         <button type="button" className="btn btn-ghost btn-sm" onClick={onDone}>
           Cancel
         </button>
-        <button className="btn btn-primary btn-sm" disabled={testing || trimmed.length < 10}>
-          {testing ? 'Testing…' : 'Test and save'}
+        <button className="btn btn-primary btn-sm" disabled={busy || !canSave}>
+          {busy ? 'Checking…' : 'Test and save'}
         </button>
       </div>
     </form>
@@ -145,24 +153,30 @@ function KeyForm({ provider, onDone }: { provider: AiProvider; onDone: () => voi
 /** One provider: its saved key, whether it works, and the actions for it. */
 export function ProviderKeyCard({ provider }: { provider: AiProvider }) {
   const toast = useToast();
-  const { keys, active } = useAiKeys();
+  const { keys, active, storage } = useAiKeys();
   const saved = keys[provider];
   const [editing, setEditing] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [busy, setBusy] = useState<'test' | 'use' | 'remove' | null>(null);
   const info = PROVIDERS[provider];
   const isActive = active === provider;
 
-  async function test() {
-    if (!saved) return;
-    setTesting(true);
+  async function run(action: 'test' | 'use' | 'remove') {
+    setBusy(action);
     try {
-      const result = await aiApi.testKey({ provider, apiKey: saved.apiKey, model: saved.model });
-      saveProviderKey(provider, { apiKey: saved.apiKey, model: saved.model, verifiedAt: new Date().toISOString() });
-      toast(`${info.label} key works (${result.model}, ${(result.latencyMs / 1000).toFixed(1)} s)`, 'success');
+      if (action === 'test') {
+        const result = await testKey(provider);
+        toast(`${info.label} key works (${result.model}, ${(result.latencyMs / 1000).toFixed(1)} s)`, 'success');
+      } else if (action === 'use') {
+        await setActiveKey(provider);
+        toast(`New diagrams use your ${info.label} key`, 'success');
+      } else {
+        await removeKey(provider);
+        toast(`${info.label} key removed${storage === 'account' ? ' from your account' : ' from this browser'}`, 'success');
+      }
     } catch (err) {
-      toast((err as Error).message, 'error');
+      toast(errorMessage(err), 'error');
     } finally {
-      setTesting(false);
+      setBusy(null);
     }
   }
 
@@ -179,23 +193,21 @@ export function ProviderKeyCard({ provider }: { provider: AiProvider }) {
         {isActive && <span className="badge badge-primary">In use</span>}
       </header>
 
-      {editing || !saved ? (
-        editing ? (
-          <KeyForm provider={provider} onDone={() => setEditing(false)} />
-        ) : (
-          <div className="provider-card-empty">
-            <p className="muted small">No key added.</p>
-            <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
-              <Key aria-hidden /> Add key
-            </button>
-          </div>
-        )
+      {editing ? (
+        <KeyForm provider={provider} onDone={() => setEditing(false)} />
+      ) : !saved ? (
+        <div className="provider-card-empty">
+          <p className="muted small">No key added.</p>
+          <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
+            <Key aria-hidden /> Add key
+          </button>
+        </div>
       ) : (
         <>
           <dl className="provider-facts">
             <div>
               <dt>Key</dt>
-              <dd className="mono">{maskKey(saved.apiKey)}</dd>
+              <dd className="mono">{saved.hint}</dd>
             </div>
             <div>
               <dt>Model</dt>
@@ -216,23 +228,17 @@ export function ProviderKeyCard({ provider }: { provider: AiProvider }) {
           </dl>
           <div className="provider-card-actions">
             {!isActive && (
-              <button className="btn btn-primary btn-sm" onClick={() => setActiveProvider(provider)}>
-                Use this key
+              <button className="btn btn-primary btn-sm" onClick={() => void run('use')} disabled={busy !== null}>
+                {busy === 'use' ? 'Switching…' : 'Use this key'}
               </button>
             )}
-            <button className="btn btn-secondary btn-sm" onClick={test} disabled={testing}>
-              {testing ? 'Testing…' : 'Test'}
+            <button className="btn btn-secondary btn-sm" onClick={() => void run('test')} disabled={busy !== null}>
+              {busy === 'test' ? 'Testing…' : 'Test'}
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)} disabled={busy !== null}>
               Edit
             </button>
-            <button
-              className="btn btn-ghost btn-sm danger"
-              onClick={() => {
-                removeProviderKey(provider);
-                toast(`${info.label} key removed from this browser`, 'success');
-              }}
-            >
+            <button className="btn btn-ghost btn-sm danger" onClick={() => void run('remove')} disabled={busy !== null}>
               Remove
             </button>
           </div>
@@ -244,9 +250,18 @@ export function ProviderKeyCard({ provider }: { provider: AiProvider }) {
 
 /** Choose what generates diagrams: the free generations or one of the saved keys. */
 export function ActiveSourcePicker() {
+  const toast = useToast();
   const { keys, active } = useAiKeys();
   const { free, freeTier } = useAiStatus();
   const savedProviders = PROVIDER_ORDER.filter((p) => keys[p]);
+
+  async function choose(provider: AiProvider | null) {
+    try {
+      await setActiveKey(provider);
+    } catch (err) {
+      toast(errorMessage(err), 'error');
+    }
+  }
 
   return (
     <div className="source-picker" role="radiogroup" aria-label="Generate diagrams with">
@@ -255,7 +270,7 @@ export function ActiveSourcePicker() {
         role="radio"
         aria-checked={active === null}
         className="source-option"
-        onClick={() => setActiveProvider(null)}
+        onClick={() => void choose(null)}
         disabled={!freeTier}
       >
         <Gift aria-hidden />
@@ -271,7 +286,7 @@ export function ActiveSourcePicker() {
           role="radio"
           aria-checked={active === provider}
           className="source-option"
-          onClick={() => setActiveProvider(provider)}
+          onClick={() => void choose(provider)}
         >
           <span className={`provider-mark provider-${provider}`} aria-hidden>
             {PROVIDERS[provider].label[0]}
@@ -286,26 +301,59 @@ export function ActiveSourcePicker() {
   );
 }
 
+/** Where keys are kept, said plainly. */
+function StorageNote() {
+  const { storage } = useAiKeys();
+  const { signedIn, limits } = useAiStatus();
+  if (storage === 'account') {
+    return (
+      <p className="key-privacy muted small">
+        <LockSimple aria-hidden /> Saved to your account, encrypted. They work on any device you sign in on, and only a masked hint is
+        ever shown.
+      </p>
+    );
+  }
+  return (
+    <p className="key-privacy muted small">
+      <LockSimple aria-hidden /> Saved only in this browser.{' '}
+      {signedIn ? (
+        'This server is not set up to save keys to accounts.'
+      ) : (
+        <>
+          <SignInButton>
+            <button className="link-btn">Sign in</button>
+          </SignInButton>{' '}
+          to keep them with your account{limits && limits.account > limits.guest ? ` and get ${limits.account} free generations a day` : ''}.
+        </>
+      )}
+    </p>
+  );
+}
+
 /** The picker plus one card per provider. Used on the AI page and in the quick dialog. */
 export function AiKeysPanel() {
+  const { loading } = useAiKeys();
   return (
     <div className="keys-panel">
-      <section>
-        <h2 className="section-label first">Generate diagrams with</h2>
-        <ActiveSourcePicker />
-      </section>
-      <section>
-        <h2 className="section-label">Your API keys</h2>
-        <div className="provider-grid">
-          {PROVIDER_ORDER.map((provider) => (
-            <ProviderKeyCard key={provider} provider={provider} />
-          ))}
-        </div>
-        <p className="key-privacy muted small">
-          Keys are saved only in this browser and sent with each AI request over HTTPS. The server uses them for that request and never
-          stores or logs them.
-        </p>
-      </section>
+      {loading ? (
+        <Spinner />
+      ) : (
+        <>
+          <section>
+            <h2 className="section-label first">Generate diagrams with</h2>
+            <ActiveSourcePicker />
+          </section>
+          <section>
+            <h2 className="section-label">Your API keys</h2>
+            <div className="provider-grid">
+              {PROVIDER_ORDER.map((provider) => (
+                <ProviderKeyCard key={provider} provider={provider} />
+              ))}
+            </div>
+            <StorageNote />
+          </section>
+        </>
+      )}
     </div>
   );
 }
@@ -341,7 +389,7 @@ export function AiKeyButton({ children, className = 'link-btn' }: { children: Re
 
 /** One quiet line under the prompt: which key or free tier is in use, with a way to change it. */
 export function AiUsageLine() {
-  const { ownKey, free } = useAiStatus();
+  const { ownKey, free, signedIn, limits } = useAiStatus();
   if (ownKey) {
     return (
       <p className="ai-usage">
@@ -351,20 +399,36 @@ export function AiUsageLine() {
     );
   }
   if (!free) return null;
+  const moreWithAccount = !signedIn && limits && limits.account > limits.guest;
   return (
     <p className="ai-usage">
-      {freeSummary(free)} · <AiKeyButton>Use your own key</AiKeyButton>
+      {freeSummary(free)}
+      {moreWithAccount && (
+        <>
+          {' · '}
+          <SignInButton>
+            <button className="link-btn">Sign in for {limits.account} a day</button>
+          </SignInButton>
+        </>
+      )}{' '}
+      · <AiKeyButton>Use your own key</AiKeyButton>
     </p>
   );
 }
 
-/** Shown instead of the prompt when AI can't run until the visitor adds a key. */
+/** Shown instead of the prompt when AI can't run until the visitor signs in or adds a key. */
 export function AiKeyNotice() {
-  const { reason, free } = useAiStatus();
+  const { reason, free, signedIn, limits } = useAiStatus();
+  const moreWithAccount = !signedIn && limits && limits.account > limits.guest;
   let message: ReactNode;
-  if (reason === 'free-used' && free && free.limit > 0) {
+  if (reason === 'free-used' && free && (free.limit > 0 || moreWithAccount)) {
     const reset = resetsIn(free.resetsAt);
-    message = (
+    message = moreWithAccount ? (
+      <>
+        <strong>You've used your free guest generations.</strong> Sign in to get {limits!.account} a day, or add your own API key
+        {reset ? `. More guest generations ${reset}` : ''}.
+      </>
+    ) : (
       <>
         <strong>You've used your free AI generations.</strong> Add your own API key to keep going
         {reset ? `, or come back ${reset}` : ''}.
@@ -377,14 +441,21 @@ export function AiKeyNotice() {
         <a href={PROVIDERS.gemini.keyUrl} target="_blank" rel="noreferrer">
           Gemini
         </a>{' '}
-        key, or one from OpenAI or Vercel AI Gateway. It stays in this browser.
+        key, or one from OpenAI or Vercel AI Gateway.
       </>
     );
   }
   return (
     <div className="ai-notice">
       <p>{message} You can still use templates or write the text yourself.</p>
-      <AiKeyButton className="btn btn-primary btn-sm">Add your API key</AiKeyButton>
+      <div className="ai-notice-actions">
+        {moreWithAccount && (
+          <SignInButton>
+            <button className="btn btn-primary btn-sm">Sign in</button>
+          </SignInButton>
+        )}
+        <AiKeyButton className={`btn btn-sm ${moreWithAccount ? 'btn-secondary' : 'btn-primary'}`}>Add your API key</AiKeyButton>
+      </div>
       {reason === 'no-server-key' && (
         <p className="muted small">
           Running your own copy? Set <code>GEMINI_API_KEY</code> or <code>AI_GATEWAY_API_KEY</code> in <code>server/.env</code> to give

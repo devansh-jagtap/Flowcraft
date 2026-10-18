@@ -617,3 +617,19 @@
     margin-left: 0;
   }
 }
+
+.key-privacy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.key-privacy > svg {
+  flex: none;
+}
+
+.ai-notice-actions {
+  display: flex;
+  gap: 8px;
+}
