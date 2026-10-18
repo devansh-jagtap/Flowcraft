@@ -26,7 +26,7 @@ function Logo() {
   );
 }
 
-/** Transparent over the landing hero; frosted once the page scrolls under it. */
+/** The glass bar gets a deeper shadow once content scrolls under it. */
 function useScrolled() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -45,8 +45,8 @@ export default function Navbar() {
   const scrolled = useScrolled();
 
   return (
-    <header className={`navbar${landing ? ' navbar-landing' : ''}${landing && !scrolled ? ' is-top' : ''}`}>
-      <div className="container navbar-inner">
+    <header className={`navbar${landing ? ' navbar-landing' : ''}${scrolled ? ' is-scrolled' : ''}`}>
+      <div className="navbar-inner">
         <Logo />
 
         {landing && (

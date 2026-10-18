@@ -1,10 +1,12 @@
 /*
  * Design tokens. The look follows macOS: San Francisco on Apple devices (self-hosted
- * Geist elsewhere), one accent (system blue), grey neutrals, hairline separators and
- * one radius scale:
- *   --radius-sm  controls (buttons, inputs, segmented controls)
- *   --radius     surfaces (cards, windows, dialogs, thumbnails)
+ * Inter, the closest open design, elsewhere), one accent (system blue), grey neutrals,
+ * hairline separators, translucent "glass" bars and one radius scale:
+ *   --radius-sm  fields and small controls (inputs, menus)
+ *   --radius     surfaces (cards, thumbnails, popovers)
+ *   --radius-xl  windows and sheets (dialogs, the floating navbar)
  *   --radius-lg  device chrome (the MacBook on the landing page)
+ * Buttons and segmented controls are capsules, as on current macOS.
  */
 :root {
   --bg: #f5f5f7;
@@ -23,16 +25,28 @@
   --danger: #d70015;
   --success: #248a3d;
 
-  --radius-sm: 8px;
-  --radius: 14px;
+  --radius-sm: 9px;
+  --radius: 16px;
+  --radius-xl: 22px;
   --radius-lg: 22px;
+
+  /* Translucent bars and popovers (macOS vibrancy). */
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.86);
+  --glass-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.9), 0 0 0 0.5px rgba(29, 29, 31, 0.12);
+  --glass-blur: saturate(180%) blur(24px);
+  --button: #ffffff;
+  --button-hover: #f6f6f8;
+  --button-pressed: #ececf0;
+  --primary-pressed: #0062c4;
 
   --shadow-sm: 0 0 0 0.5px rgba(29, 29, 31, 0.12), 0 1px 2px rgba(29, 29, 31, 0.06);
   --shadow: 0 0 0 0.5px rgba(29, 29, 31, 0.1), 0 6px 18px rgba(29, 29, 31, 0.08);
   --shadow-lg: 0 0 0 0.5px rgba(29, 29, 31, 0.12), 0 24px 64px rgba(29, 29, 31, 0.16);
   --control-shadow: 0 0 0 0.5px rgba(29, 29, 31, 0.08), 0 1px 2px rgba(29, 29, 31, 0.14);
 
-  --nav-height: 56px;
+  /* The floating navbar: a 46px capsule with 10px of space above it. */
+  --nav-height: 64px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* The only stacking layers in the app. */
@@ -40,8 +54,8 @@
   --z-nav: 20;
   --z-toast: 100;
 
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Geist Variable', 'Segoe UI', sans-serif;
-  --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Geist Variable', 'Segoe UI', sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', 'Segoe UI Variable Text', 'Segoe UI', sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter Variable', 'Segoe UI Variable Display', 'Segoe UI', sans-serif;
   --mono: ui-monospace, 'SF Mono', 'Geist Mono Variable', Menlo, Consolas, monospace;
 
   color-scheme: light;
@@ -68,5 +82,12 @@
   --shadow: 0 0 0 0.5px rgba(245, 245, 247, 0.1), 0 6px 18px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 0 0 0.5px rgba(245, 245, 247, 0.12), 0 24px 64px rgba(0, 0, 0, 0.6);
   --control-shadow: 0 0 0 0.5px rgba(245, 245, 247, 0.12), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --glass: rgba(40, 40, 44, 0.66);
+  --glass-strong: rgba(44, 44, 48, 0.84);
+  --glass-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.5);
+  --button: #3a3a3e;
+  --button-hover: #434347;
+  --button-pressed: #4d4d52;
+  --primary-pressed: #0070e0;
   color-scheme: dark;
 }

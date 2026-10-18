@@ -5,7 +5,8 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import ClerkWithRouter from './components/layout/ClerkWithRouter';
 import { ToastProvider } from './context/ToastContext';
-import '@fontsource-variable/geist';
+// Optical sizes switch between text and display cuts by size, like SF Pro Text and Display.
+import '@fontsource-variable/inter/opsz.css';
 import '@fontsource-variable/geist-mono';
 import './styles/index.css';
 import './lib/theme';
