@@ -50,5 +50,9 @@ export const env = {
   // Encrypts the API keys users save to their account. Keep it secret and stable: changing it makes saved keys unreadable.
   aiKeysSecret: process.env.AI_KEYS_SECRET ?? '',
   trustProxy: trustProxy(),
-  clientOrigins: (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173').split(',').map((o) => o.trim()),
+  clientOrigins: [
+    ...(process.env.CLIENT_ORIGIN ?? 'http://localhost:5173').split(',').map((o) => o.trim()),
+    // On Vercel, the project's production address and this deployment's own URL are always allowed.
+    ...[process.env.VERCEL_PROJECT_PRODUCTION_URL, process.env.VERCEL_URL].filter(Boolean).map((host) => `https://${host}`),
+  ].filter((origin) => origin),
 } as const;
