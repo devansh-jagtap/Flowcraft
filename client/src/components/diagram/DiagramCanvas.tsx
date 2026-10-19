@@ -7,6 +7,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useNodesState,
+  useNodesInitialized,
   useReactFlow,
   type Edge,
   type EdgeTypes,
@@ -151,12 +152,15 @@ function Canvas({ graph, type, direction, theme: themeName, positions = NO_POSIT
   const [nodes, setNodes, onNodesChange] = useNodesState<ShapeFlowNode>(layoutNodes);
   useEffect(() => setNodes(layoutNodes), [layoutNodes, setNodes]);
 
-  // Re-fit when the structure changes (not on every keystroke inside a label).
+  // Re-fit when the structure changes (not on every keystroke inside a label), and once React Flow has
+  // measured the nodes: fitting before that uses zero sizes and can leave the diagram cut off.
   const structureKey = `${type}|${direction}|${graph.nodes.length}|${graph.edges.length}`;
+  const measured = useNodesInitialized();
   useEffect(() => {
+    if (!measured) return;
     const id = requestAnimationFrame(() => fitView({ padding: 0.15, duration: 300, maxZoom: 1.4 }));
     return () => cancelAnimationFrame(id);
-  }, [structureKey, fitView]);
+  }, [structureKey, measured, fitView]);
 
   async function handleExport(format: ExportFormat) {
     setExporting(true);
